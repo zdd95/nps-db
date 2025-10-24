@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NPS Survey Data</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>NPS Survey Data</h1>
+        
+        <div class="form-row">
+            <div class="project-section">
+                <div class="form-group">
+                    <label for="projectsDropdown">Выберите проект:</label>
+                    <div class="dropdown">
+                        <input type="text"
+                               id="projectsDropdown"
+                               class="dropdown-input"
+                               placeholder="Загрузка проектов..."
+                               readonly
+                               onclick="toggleDropdown()">
+                        <div class="dropdown-list" id="dropdownList">
+                            <div class="search-container">
+                                <input type="text"
+                                    id="projectSearch"
+                                    class="search-input"
+                                    placeholder="Поиск проекта..."
+                                    oninput="filterProjects()">
+                            </div>
+                            <div class="dropdown-options" id="dropdownOptions">
+                                <!-- Опции будут заполнены через JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="dateFilter">Дата (с):</label>
+                <div class="date-input-wrapper">
+                    <input type="date" id="dateFilter">
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons-group">
+            <button onclick="loadData()">Загрузить данные с БД</button>
+            <button onclick="downloadCSV()" id="downloadBtn" disabled>Скачать CSV</button>
+        </div>
+        
+        <div id="message"></div>
+        <div id="loading" class="loading" style="display: none;">Загрузка данных...</div>
+        
+        <div id="tableContainer" style="margin-top: 20px;"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

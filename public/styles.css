@@ -1,0 +1,243 @@
+body {
+    font-family: Arial, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+.container {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.form-row {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+.form-group {
+    position: relative;
+}
+.project-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: fit-content;
+}
+.buttons-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+label {
+    display: block;
+    margin-bottom: 5px;
+    margin-left: 5px;
+    font-weight: lighter;
+    font-size: 16px;
+}
+input, button {
+    padding: 12px 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+}
+input {
+    width: 200px;
+}
+button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 12px;
+    width: auto;
+    margin-right: 10px;
+    padding: 12px 20px;
+    font-weight: bold;
+}
+button:hover {
+    background-color: #0056b3;
+}
+#downloadBtn {
+    background-color: #1dc981;
+}
+#downloadBtn:hover {
+    background-color: #128e5a;;
+}
+#downloadBtn:disabled {
+    background-color: #757e86;
+    cursor: not-allowed;
+}
+button:disabled {
+    background-color: #757e86;
+    cursor: not-allowed;
+}
+.error {
+    color: #dc3545;
+    margin-top: 10px;
+}
+.success {
+    color: #03a62e;
+    margin-top: 14px;
+    font-weight: lighter;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    border: 1px solid #000000;
+}
+th, td {
+    border: 1px solid #000000;
+    padding: 8px;
+    text-align: left;
+}
+td:not(.feedback-cell) {
+    font-size: 14px;
+}
+th {
+    background-color: #dfdfdf !important;
+    color: rgb(0, 0, 0);
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+}
+th:hover {
+    background-color: #c9c9c9 !important;
+}
+th.sorted-asc::after {
+    content: " ↑";
+    font-weight: bold;
+}
+th.sorted-desc::after {
+    content: " ↓";
+    font-weight: bold;
+}
+tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+.loading {
+    color: #007bff;
+    margin: 10px 0;
+}
+.feedback-cell {
+    max-width: 300px;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 12px;
+}
+input[type="date"] {
+    width: 200px;
+    cursor: pointer;
+}
+/* Стили для календаря в браузерах WebKit (Chrome, Safari) */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    background-position: right center;
+    background-repeat: no-repeat;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    left: 0;
+    cursor: pointer;
+    opacity: 0;
+}
+/* Обертка для поля даты с позиционированием */
+.date-input-wrapper {
+    position: relative;
+    display: inline-block;
+}
+.date-input-wrapper::after {
+    content: '';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    pointer-events: none;
+}
+/* Стили для выпадающего списка */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+.dropdown-input {
+    width: 200px;
+    cursor: pointer;
+    background-color: white;
+    font-size: 16px;
+    padding-right: 30px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px 20px;
+}
+.dropdown-list.show ~ .dropdown-input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 4l4 4H2z'/%3E%3C/svg%3E");
+}
+.dropdown-list {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 4px 4px 8px 8px;
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.dropdown-list.show {
+    display: block;
+}
+.dropdown-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+.dropdown-option:hover {
+    background-color: #f8f9fa;
+}
+.dropdown-option.selected {
+    background-color: #007bff;
+    color: white;
+}
+.search-container {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    background-color: #f8f9fa;
+}
+.search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+.search-input:focus {
+    outline: none;
+    border-color: #007bff;
+}
+.dropdown-options {
+    max-height: 300px;
+    overflow-y: auto;
+}
+.no-results {
+    padding: 8px 12px;
+    color: #666;
+    font-style: italic;
+    text-align: center;
+}
