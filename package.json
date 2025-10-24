@@ -1,7 +1,7 @@
 {
     "name": "nps-survey-app",
     "version": "1.0.0",
-    "description": "NPS Survey Data Application",
+    "description": "NPS Survey Data Management System - приложение для управления данными опросов",
     "main": "server.js",
     "scripts": {
       "start": "node server.js",
