@@ -1,4 +1,4 @@
-# NPS Survey Data Application
+# NPS Survey Data Management System
 
 Приложение для получения и анализа данных NPS опросов из базы данных PostgreSQL.
 
@@ -42,24 +42,23 @@ https://chat.deepseek.com/share/mg4c6hul6dauuxg47i
 ## Настройка .env файла
 
 Создайте файл `.env` в корне проекта со следующим содержимым:
-
-DB_HOST=service-nps-zdashidondokov.db.hsmdev.ru
+```env
+DB_HOST=service-nps.db.ru
 DB_PORT=5432
 DB_NAME=service-nps
 DB_USER=your_username_here
 DB_PASSWORD=your_password_here
 DB_SSL=false
 PORT=3000
-
+```
 
 ## Установка и запуск
 
 ### 1. Клонирование и настройка
 
 ```bash
-# Создайте папку проекта и перейдите в нее
-mkdir nps-db
-cd nps-db
+# Склонируйте репозиторий
+git clone git@github.com:zdd95/nps-db.git
 
 # Установите зависимости
 npm init -y
