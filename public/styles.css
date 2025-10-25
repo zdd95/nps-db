@@ -83,6 +83,7 @@ button:disabled {
 .success {
     color: #03a62e;
     margin-top: 14px;
+    margin-left: 10px;
     font-weight: lighter;
 }
 table {
@@ -100,14 +101,14 @@ td:not(.feedback-cell) {
     font-size: 14px;
 }
 th {
-    background-color: #dfdfdf !important;
+    background-color: #f5c76a !important;
     color: rgb(0, 0, 0);
     font-weight: bold;
     cursor: pointer;
     user-select: none;
 }
 th:hover {
-    background-color: #c9c9c9 !important;
+    background-color: #d9b05d !important;
 }
 th.sorted-asc::after {
     content: " ↑";
@@ -240,4 +241,71 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     color: #666;
     font-style: italic;
     text-align: center;
+}
+/* Стили для информации о кампаниях */
+.campaign-info {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+.campaign-info-card {
+    background: #e3e3e3;
+    border: 1px solid #545454;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 15px;
+}
+.campaign-info-card h3 {
+    margin: 0 0 12px 0;
+    color: #333;
+    font-size: 18px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 8px;
+}
+.campaign-count-total {
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: #e7f3ff;
+    border-radius: 4px;
+    font-size: 14px;
+}
+.domain-section {
+    margin-bottom: 12px;
+    padding: 12px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+.domain-header {
+    margin-bottom: 10px;
+    font-size: 16px;
+    display: block;
+    justify-content: space-between;
+    align-items: center;
+}
+.domain-campaign-count {
+    font-size: 14px;
+    color: #6c757d;
+    font-weight: normal;
+}
+.campaigns-section {
+    font-size: 14px;
+}
+.campaign-list {
+    display: block;
+    flex-wrap: wrap;
+    gap: 8px, 10px;
+    padding: 4px 0px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    align-items: flex-start;
+}
+.campaign-id {
+    background: #e7f3ff;
+    border: 1px solid #dadada;
+    color: rgb(0, 0, 0);
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
+    margin-right: 10px;
 }
