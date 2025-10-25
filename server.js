@@ -4,9 +4,6 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-// Импортируем маппинг проектов
-const projectsMapping = require('./config/projects-mapping');
-
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -111,13 +108,32 @@ app.post('/api/nps-data', async (req, res) => {
     }
 });
 
-// API endpoint для получения списка проектов
-app.get('/api/projects', (req, res) => {
+// API endpoint для получения списка проектов с БД
+app.get('/api/dynamic-projects', async (req, res) => {
     try {
+        const query = `
+            SELECT
+                LOWER(c.client_id) as project_name,
+                ARRAY_AGG(DISTINCT c.id) as campaign_ids
+            FROM nps.campaign c
+            WHERE c.survey_type = 'NPS'
+            GROUP BY LOWER(c.client_id)
+            ORDER BY project_name
+        `;
+        
+        const result = await pool.query(query);
+        
+        // Преобразуем в нужный формат
+        const projectsMapping = {};
+        result.rows.forEach(row => {
+            const projectName = row.project_name.toUpperCase();
+            projectsMapping[projectName] = row.campaign_ids;
+        });
+        
         res.json(projectsMapping);
     } catch (error) {
-        console.error('Error loading projects mapping:', error);
-        res.status(500).json({ error: 'Ошибка загрузки списка проектов' });
+        console.error('Error fetching projects:', error);
+        res.status(500).json({ error: 'Ошибка загрузки проектов' });
     }
 });
 
@@ -159,8 +175,19 @@ process.on('SIGINT', async () => {
     }
 });
 
-app.listen(port, () => {
+app.listen(port, async () => {
     console.log(`🚀 Сервер запущен на http://localhost:${port}`);
     console.log(`📊 База данных: ${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`);
-    console.log(`📋 Загружено проектов: ${Object.keys(projectsMapping).length}`);
+
+    // Динамически загружаем проекты для отображения в консоли
+    try {
+        const result = await pool.query(`
+            SELECT COUNT(DISTINCT LOWER(client_id)) as project_count
+            FROM nps.campaign
+            WHERE survey_type = 'NPS'
+        `);
+        console.log(`📋 Проектов в БД: ${result.rows[0].project_count}`);
+    } catch (error) {
+        console.log('📋 Не удалось загрузить количество проектов');
+    }
 });
