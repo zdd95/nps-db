@@ -7,7 +7,7 @@ let sortOrder = 'asc';
 // Загрузка проектов с сервера
 async function loadProjects() {
     try {
-        const response = await fetch('/api/projects');
+        const response = await fetch('/api/dynamic-projects');
         if (!response.ok) {
             throw new Error('Ошибка загрузки проектов');
         }
@@ -24,10 +24,14 @@ function initializeDropdown() {
     const dropdownOptions = document.getElementById('dropdownOptions');
     const projectNames = Object.keys(projectsMapping);
     
+    // СОРТИРОВКА ПО АЛФАВИТУ ПО УБЫВАНИЮ (Z-A)
+    const sortedProjectNames = projectNames.sort((a, b) => b.localeCompare(a));
+    
     // Очищаем список
     dropdownOptions.innerHTML = '';
     
-    projectNames.forEach(projectName => {
+    // Заполняем отсортированными проектами
+    sortedProjectNames.forEach(projectName => {
         const option = document.createElement('div');
         option.className = 'dropdown-option';
         option.textContent = projectName;
@@ -41,9 +45,13 @@ function initializeDropdown() {
         dropdownOptions.appendChild(option);
     });
     
-    // Выбираем проект по умолчанию
-    if (projectNames.length > 0) {
-        selectProject('Фонтанка');
+    // Выбираем проект по умолчанию - FONTANKA
+    const defaultProject = sortedProjectNames.find(name =>
+        name.toUpperCase() === 'FONTANKA'
+    ) || sortedProjectNames[0];
+    
+    if (defaultProject) {
+        selectProject(defaultProject);
     }
 }
 
