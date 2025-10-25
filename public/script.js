@@ -147,6 +147,89 @@ function getSelectedCampaignIds() {
     return projectsMapping[selectedProject] || [];
 }
 
+// Функция для загрузки и отображения информации о кампаниях
+async function loadCampaignInfo(projectName) {
+    try {
+        const response = await fetch(`/api/campaign-info?projectName=${encodeURIComponent(projectName)}`);
+        if (!response.ok) {
+            throw new Error('Ошибка загрузки информации о кампаниях');
+        }
+        const campaignInfo = await response.json();
+        displayCampaignInfo(projectName, campaignInfo);
+    } catch (error) {
+        console.error('Error loading campaign info:', error);
+        displayCampaignInfo(projectName, []);
+    }
+}
+
+// Функция для отображения информации над таблицей
+// Функция для отображения информации над таблицей
+function displayCampaignInfo(projectName, campaigns) {
+    const tableContainer = document.getElementById('tableContainer');
+    
+    // Создаем или находим контейнер для информации
+    let infoContainer = document.getElementById('campaignInfoContainer');
+    if (!infoContainer) {
+        infoContainer = document.createElement('div');
+        infoContainer.id = 'campaignInfoContainer';
+        infoContainer.className = 'campaign-info';
+        tableContainer.parentNode.insertBefore(infoContainer, tableContainer);
+    }
+    
+    if (campaigns.length === 0) {
+        infoContainer.innerHTML = `
+            <div class="campaign-info-card">
+                <p>Информация о кампаниях недоступна</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Группируем кампании по доменам
+    const domainsMap = {};
+    campaigns.forEach(campaign => {
+        if (!domainsMap[campaign.domain]) {
+            domainsMap[campaign.domain] = [];
+        }
+        domainsMap[campaign.domain].push(campaign);
+    });
+    
+    const domains = Object.keys(domainsMap);
+    
+    let infoHTML = `
+        <div class="campaign-info-card">
+            <div class="campaign-count-total">
+                <strong>Всего кампаний:</strong> ${campaigns.length}
+            </div>
+    `;
+    
+    // Для каждого домена создаем отдельную секцию
+    domains.forEach(domain => {
+        const domainCampaigns = domainsMap[domain];
+        
+        infoHTML += `
+            <div class="domain-section">
+                <div class="domain-header">
+                    <strong>Домен:</strong> ${domain || 'Не указан'}
+                    <span class="domain-campaign-count">(кампаний: ${domainCampaigns.length})</span>
+                </div>
+                <div class="campaigns-section">
+                    <div class="campaign-list">
+                        ${domainCampaigns.map(campaign => `
+                            <span class="campaign-id" title="Campaign ID: ${campaign.campaign_id}">
+                                ${campaign.campaign_id}
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    infoHTML += `</div>`;
+    infoContainer.innerHTML = infoHTML;
+}
+
 async function loadData() {
     const dateFilter = document.getElementById('dateFilter').value;
     const messageDiv = document.getElementById('message');
@@ -156,6 +239,11 @@ async function loadData() {
     // Очистка предыдущих сообщений и данных
     messageDiv.innerHTML = '';
     document.getElementById('tableContainer').innerHTML = '';
+    
+    // Очищаем информацию о кампаниях
+    const infoContainer = document.getElementById('campaignInfoContainer');
+    if (infoContainer) infoContainer.remove();
+    
     downloadBtn.disabled = true;
     currentData = [];
 
@@ -167,6 +255,9 @@ async function loadData() {
     loadingDiv.style.display = 'block';
 
     try {
+        // Загружаем информацию о кампаниях
+        await loadCampaignInfo(selectedProject);
+        
         const campaignIds = getSelectedCampaignIds();
 
         const response = await fetch('/api/nps-data', {
@@ -200,7 +291,7 @@ async function loadData() {
 
     } catch (error) {
         console.error('Error:', error);
-        messageDiv.innerHTML = `<div class="error"> ERROR: ${error.message}</div>`;
+        messageDiv.innerHTML = `<div class="error">ERROR: ${error.message}</div>`;
     } finally {
         loadingDiv.style.display = 'none';
     }

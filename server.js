@@ -137,6 +137,38 @@ app.get('/api/dynamic-projects', async (req, res) => {
     }
 });
 
+// API endpoint для получения информации о кампаниях проекта
+// API endpoint для получения информации о кампаниях проекта
+app.get('/api/campaign-info', async (req, res) => {
+    const { projectName } = req.query;
+
+    try {
+        if (!projectName) {
+            return res.status(400).json({ error: 'projectName обязателен' });
+        }
+
+        const query = `
+            SELECT 
+                c.id as campaign_id,
+                c.domain,
+                c.client_id,
+                c.start_at,
+                c.end_at
+            FROM nps.campaign c
+            WHERE LOWER(c.client_id) = LOWER($1)
+            AND c.survey_type = 'NPS'
+            ORDER BY c.domain, c.start_at DESC
+        `;
+        
+        const result = await pool.query(query, [projectName]);
+        
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching campaign info:', error);
+        res.status(500).json({ error: 'Ошибка загрузки информации о кампаниях' });
+    }
+});
+
 // Тестовый endpoint для проверки подключения
 app.get('/api/test-db', async (req, res) => {
     try {
