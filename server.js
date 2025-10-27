@@ -138,7 +138,6 @@ app.get('/api/dynamic-projects', async (req, res) => {
 });
 
 // API endpoint для получения информации о кампаниях проекта
-// API endpoint для получения информации о кампаниях проекта
 app.get('/api/campaign-info', async (req, res) => {
     const { projectName } = req.query;
 
@@ -148,7 +147,7 @@ app.get('/api/campaign-info', async (req, res) => {
         }
 
         const query = `
-            SELECT 
+            SELECT
                 c.id as campaign_id,
                 c.domain,
                 c.client_id,
