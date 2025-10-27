@@ -700,13 +700,16 @@ function downloadCSV() {
     // Добавляем данные
     dataToExport.forEach(row => {
         const rowData = headers.map(header => {
-            let value;
+            let value = row[header];
             
+            // Обрабатываем специальные случаи
             if (header === 'created_at') {
-                // Для даты используем формат как в DBeaver
-                value = formatDateForCSV(row[header]);
-            } else {
-                value = row[header] || '';
+                value = formatDateForCSV(value);
+            }
+            
+            // Для score: 0 должен остаться 0, null/undefined становятся пустой строкой
+            if (header === 'score') {
+                value = value !== undefined && value !== null ? value : '';
             }
             
             // Для feedback обрабатываем переносы строк
@@ -718,6 +721,7 @@ function downloadCSV() {
             if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
                 value = `"${value.replace(/"/g, '""')}"`;
             }
+            
             return value;
         });
         csvContent += rowData.join(',') + '\n';
