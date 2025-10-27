@@ -4,6 +4,12 @@ let projectsMapping = {};
 let sortField = 'created_at';
 let sortOrder = 'asc';
 
+// Данные для фильтров
+let domains = [];
+let selectedDomain = null;
+let campaigns = [];
+let selectedCampaigns = new Set();
+
 // Загрузка проектов с сервера
 async function loadProjects() {
     try {
@@ -12,23 +18,23 @@ async function loadProjects() {
             throw new Error('Ошибка загрузки проектов');
         }
         projectsMapping = await response.json();
-        initializeDropdown();
+        initializeProjectDropdown();
     } catch (error) {
         console.error('Error loading projects:', error);
         document.getElementById('projectsDropdown').placeholder = 'Ошибка загрузки проектов';
     }
 }
 
-// Инициализация выпадающего списка
-function initializeDropdown() {
-    const dropdownOptions = document.getElementById('dropdownOptions');
+// Инициализация выпадающего списка проектов
+function initializeProjectDropdown() {
+    const projectOptions = document.getElementById('projectOptions');
     const projectNames = Object.keys(projectsMapping);
     
     // СОРТИРОВКА ПО АЛФАВИТУ ПО УБЫВАНИЮ (Z-A)
     const sortedProjectNames = projectNames.sort((a, b) => b.localeCompare(a));
     
     // Очищаем список
-    dropdownOptions.innerHTML = '';
+    projectOptions.innerHTML = '';
     
     // Заполняем отсортированными проектами
     sortedProjectNames.forEach(projectName => {
@@ -39,10 +45,10 @@ function initializeDropdown() {
         
         option.addEventListener('click', function() {
             selectProject(projectName);
-            closeDropdown();
+            closeProjectDropdown();
         });
         
-        dropdownOptions.appendChild(option);
+        projectOptions.appendChild(option);
     });
     
     // Выбираем проект по умолчанию - FONTANKA
@@ -55,12 +61,355 @@ function initializeDropdown() {
     }
 }
 
+// Выбор проекта
+async function selectProject(projectName) {
+    selectedProject = projectName;
+    
+    // Обновляем классы selected у опций
+    const options = document.querySelectorAll('#projectOptions .dropdown-option');
+    options.forEach(option => {
+        if (option.getAttribute('data-project-name') === projectName) {
+            option.classList.add('selected');
+        } else {
+            option.classList.remove('selected');
+        }
+    });
+    
+    // Обновляем поле ввода
+    const dropdownInput = document.getElementById('projectsDropdown');
+    dropdownInput.value = selectedProject;
+    dropdownInput.placeholder = 'Нажмите для выбора проекта';
+    
+    // Сбрасываем выбранные кампании при смене проекта
+    selectedCampaigns.clear();
+    updateCampaignFilterDisplay();
+    
+    // Загружаем домены и кампании для выбранного проекта
+    await loadDomainsAndCampaigns(projectName);
+    
+    // Очищаем таблицу при смене проекта
+    document.getElementById('tableContainer').innerHTML = '';
+    document.getElementById('downloadBtn').disabled = true;
+    document.getElementById('message').innerHTML = '';
+    currentData = [];
+}
+
+// Загрузка доменов и кампаний для проекта
+async function loadDomainsAndCampaigns(projectName) {
+    try {
+        const response = await fetch(`/api/campaign-info?projectName=${encodeURIComponent(projectName)}`);
+        if (!response.ok) {
+            throw new Error('Ошибка загрузки информации о кампаниях');
+        }
+        campaigns = await response.json();
+        
+        // Извлекаем уникальные домены
+        domains = [...new Set(campaigns.map(campaign => campaign.domain))].filter(domain => domain);
+        
+        // Инициализируем фильтр доменов
+        initializeDomainFilter();
+        
+    } catch (error) {
+        console.error('Error loading domains and campaigns:', error);
+        domains = [];
+        campaigns = [];
+        resetDomainFilter();
+        resetCampaignFilter();
+    }
+}
+
+// Инициализация фильтра доменов
+function initializeDomainFilter() {
+    const domainOptions = document.getElementById('domainOptions');
+    const domainFilter = document.getElementById('domainFilter');
+    
+    domainOptions.innerHTML = '';
+    
+    if (domains.length === 0) {
+        domainFilter.placeholder = 'Домены не найдены';
+        domainFilter.value = '';
+        resetCampaignFilter();
+        return;
+    }
+    
+    domains.forEach(domain => {
+        const option = document.createElement('div');
+        option.className = 'dropdown-option';
+        option.textContent = domain;
+        option.setAttribute('data-domain', domain);
+        
+        option.addEventListener('click', function() {
+            selectDomain(domain);
+            closeDomainDropdown();
+        });
+        
+        domainOptions.appendChild(option);
+    });
+    
+    // Выбираем первый домен по умолчанию
+    selectDomain(domains[0]);
+}
+
+// Выбор домена
+function selectDomain(domain) {
+    selectedDomain = domain;
+    const domainFilter = document.getElementById('domainFilter');
+    domainFilter.value = selectedDomain;
+    domainFilter.placeholder = 'Нажмите для выбора домена';
+    
+    // Обновляем классы selected у опций
+    const options = document.querySelectorAll('#domainOptions .dropdown-option');
+    options.forEach(option => {
+        if (option.getAttribute('data-domain') === domain) {
+            option.classList.add('selected');
+        } else {
+            option.classList.remove('selected');
+        }
+    });
+    
+    // Сбрасываем выбранные кампании при смене домена
+    selectedCampaigns.clear();
+    updateCampaignFilterDisplay();
+    
+    // Обновляем фильтр кампаний
+    updateCampaignFilter();
+}
+
+// Обновление фильтра кампаний
+function updateCampaignFilter() {
+    const campaignOptions = document.getElementById('campaignOptions');
+    const campaignFilter = document.getElementById('campaignFilter');
+    
+    // Очищаем список кампаний (кроме controls)
+    const controls = campaignOptions.querySelector('.checkbox-controls');
+    campaignOptions.innerHTML = '';
+    if (controls) {
+        campaignOptions.appendChild(controls);
+    }
+    
+    if (!selectedDomain) {
+        campaignFilter.placeholder = 'Выберите домен сначала';
+        campaignFilter.value = '';
+        return;
+    }
+    
+    // Получаем кампании для выбранного домена
+    const domainCampaigns = campaigns.filter(campaign => campaign.domain === selectedDomain);
+    
+    if (domainCampaigns.length === 0) {
+        campaignFilter.placeholder = 'Кампании не найдены';
+        campaignFilter.value = '';
+        return;
+    }
+    
+    // Добавляем кампании в список
+    domainCampaigns.forEach(campaign => {
+        const option = document.createElement('div');
+        option.className = 'checkbox-option';
+        option.innerHTML = `
+            <input type="checkbox" id="campaign_${campaign.campaign_id}" value="${campaign.campaign_id}">
+            <label for="campaign_${campaign.campaign_id}">${campaign.campaign_id}</label>
+        `;
+        
+        const checkbox = option.querySelector('input');
+        // При обновлении списка сбрасываем выбор, если домен изменился
+        checkbox.checked = false;
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                selectedCampaigns.add(campaign.campaign_id);
+            } else {
+                selectedCampaigns.delete(campaign.campaign_id);
+            }
+            updateCampaignFilterDisplay();
+        });
+        
+        campaignOptions.appendChild(option);
+    });
+    
+    // Обновляем отображение фильтра
+    updateCampaignFilterDisplay();
+}
+
+// Выбрать все кампании
+function selectAllCampaigns() {
+    if (!selectedDomain) return;
+    
+    const domainCampaigns = campaigns.filter(campaign => campaign.domain === selectedDomain);
+    domainCampaigns.forEach(campaign => {
+        selectedCampaigns.add(campaign.campaign_id);
+    });
+    
+    updateCampaignOptions();
+    updateCampaignFilterDisplay();
+}
+
+// Сбросить все кампании
+function deselectAllCampaigns() {
+    selectedCampaigns.clear();
+    updateCampaignOptions();
+    updateCampaignFilterDisplay();
+}
+
+// Обновление отображения чекбоксов
+function updateCampaignOptions() {
+    const checkboxes = document.querySelectorAll('#campaignOptions input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        if (checkbox.id !== 'selectAllCampaigns') {
+            checkbox.checked = false;
+        }
+    });
+}
+
+// Обновление отображения фильтра кампаний
+function updateCampaignFilterDisplay() {
+    const campaignFilter = document.getElementById('campaignFilter');
+    
+    if (selectedCampaigns.size === 0) {
+        campaignFilter.value = '';
+        campaignFilter.placeholder = 'Выберите кампании';
+    } else if (selectedCampaigns.size === 1) {
+        campaignFilter.value = Array.from(selectedCampaigns)[0];
+    } else {
+        campaignFilter.value = `Выбрано: ${selectedCampaigns.size}`;
+    }
+    
+    // Также обновляем состояние чекбоксов
+    updateCampaignOptionsState();
+}
+
+// Обновление состояния чекбоксов в списке
+function updateCampaignOptionsState() {
+    const checkboxes = document.querySelectorAll('#campaignOptions input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        if (checkbox.id !== 'selectAllCampaigns') {
+            checkbox.checked = selectedCampaigns.has(checkbox.value);
+        }
+    });
+}
+
+// Сброс фильтра доменов
+function resetDomainFilter() {
+    selectedDomain = null;
+    document.getElementById('domainFilter').value = '';
+    document.getElementById('domainFilter').placeholder = 'Выберите проект сначала';
+    resetCampaignFilter();
+}
+
+// Сброс фильтра кампаний
+function resetCampaignFilter() {
+    selectedCampaigns.clear();
+    document.getElementById('campaignFilter').value = '';
+    document.getElementById('campaignFilter').placeholder = 'Выберите домен сначала';
+    updateCampaignOptions();
+}
+
+// Получение выбранных campaign_ids для загрузки данных
+function getSelectedCampaignIds() {
+    return Array.from(selectedCampaigns);
+}
+
+// Функции для работы с dropdown проектов
+function toggleProjectDropdown() {
+    const projectList = document.getElementById('projectList');
+    const isShowing = projectList.classList.contains('show');
+    
+    // Закрываем все другие dropdown'ы
+    closeAllDropdowns();
+    
+    if (!isShowing) {
+        // Открываем dropdown проекта
+        projectList.classList.add('show');
+        // Сбрасываем поиск при открытии
+        document.getElementById('projectSearch').value = '';
+        // Показываем все опции
+        const options = document.querySelectorAll('#projectOptions .dropdown-option');
+        options.forEach(option => {
+            option.style.display = 'block';
+        });
+        // Удаляем сообщение "не найдено"
+        const noResults = document.getElementById('noResults');
+        if (noResults) noResults.remove();
+        // Фокусируемся на поле поиска
+        setTimeout(() => {
+            document.getElementById('projectSearch').focus();
+        }, 0);
+    }
+}
+
+function closeProjectDropdown() {
+    document.getElementById('projectList').classList.remove('show');
+}
+
+// Функции для работы с dropdown доменов
+function toggleDomainDropdown() {
+    const domainList = document.getElementById('domainList');
+    const isShowing = domainList.classList.contains('show');
+    
+    // Закрываем все другие dropdown'ы
+    closeAllDropdowns();
+    
+    if (!isShowing && domains.length > 0) {
+        // Открываем dropdown доменов
+        domainList.classList.add('show');
+        // Сбрасываем поиск при открытии
+        document.getElementById('domainSearch').value = '';
+        // Показываем все опции
+        const options = document.querySelectorAll('#domainOptions .dropdown-option');
+        options.forEach(option => {
+            option.style.display = 'block';
+        });
+        // Фокусируемся на поле поиска
+        setTimeout(() => {
+            document.getElementById('domainSearch').focus();
+        }, 0);
+    }
+}
+
+function closeDomainDropdown() {
+    document.getElementById('domainList').classList.remove('show');
+}
+
+// Функции для работы с dropdown кампаний
+function toggleCampaignDropdown() {
+    const campaignList = document.getElementById('campaignList');
+    const isShowing = campaignList.classList.contains('show');
+    
+    // Закрываем все другие dropdown'ы
+    closeAllDropdowns();
+    
+    if (!isShowing && selectedDomain) {
+        // Открываем dropdown кампаний
+        campaignList.classList.add('show');
+        // Сбрасываем поиск при открытии
+        document.getElementById('campaignSearch').value = '';
+        // Показываем все опции
+        const options = document.querySelectorAll('#campaignOptions .checkbox-option');
+        options.forEach(option => {
+            option.style.display = 'flex';
+        });
+        // Фокусируемся на поле поиска
+        setTimeout(() => {
+            document.getElementById('campaignSearch').focus();
+        }, 0);
+    }
+}
+
+function closeCampaignDropdown() {
+    document.getElementById('campaignList').classList.remove('show');
+}
+
+// Функция для закрытия всех dropdown'ов
+function closeAllDropdowns() {
+    closeProjectDropdown();
+    closeDomainDropdown();
+    closeCampaignDropdown();
+}
+
 // Фильтрация проектов
 function filterProjects() {
     const searchInput = document.getElementById('projectSearch');
     const searchTerm = searchInput.value.toLowerCase();
-    const options = document.querySelectorAll('.dropdown-option');
-    const dropdownOptions = document.getElementById('dropdownOptions');
+    const options = document.querySelectorAll('#projectOptions .dropdown-option');
     
     let hasVisibleOptions = false;
     
@@ -82,154 +431,91 @@ function filterProjects() {
             noResultsMsg.id = 'noResults';
             noResultsMsg.className = 'no-results';
             noResultsMsg.textContent = 'Проекты не найдены';
-            dropdownOptions.appendChild(noResultsMsg);
+            document.getElementById('projectOptions').appendChild(noResultsMsg);
         }
     } else if (noResults) {
         noResults.remove();
     }
 }
 
-// Переключение отображения выпадающего списка
-function toggleDropdown() {
-    const dropdownList = document.getElementById('dropdownList');
-    const isShowing = dropdownList.classList.contains('show');
+// Фильтрация доменов
+function filterDomains() {
+    const searchInput = document.getElementById('domainSearch');
+    const searchTerm = searchInput.value.toLowerCase();
+    const options = document.querySelectorAll('#domainOptions .dropdown-option');
     
-    if (!isShowing) {
-        // Открываем dropdown
-        dropdownList.classList.add('show');
-        // Сбрасываем поиск при открытии
-        document.getElementById('projectSearch').value = '';
-        // Показываем все опции
-        const options = document.querySelectorAll('.dropdown-option');
-        options.forEach(option => {
-            option.style.display = 'block';
-        });
-        // Удаляем сообщение "не найдено"
-        const noResults = document.getElementById('noResults');
-        if (noResults) noResults.remove();
-        // Фокусируемся на поле поиска
-        setTimeout(() => {
-            document.getElementById('projectSearch').focus();
-        }, 0);
-    } else {
-        closeDropdown();
-    }
-}
-
-// Закрытие выпадающего списка
-function closeDropdown() {
-    const dropdownList = document.getElementById('dropdownList');
-    dropdownList.classList.remove('show');
-}
-
-// Выбор проекта
-function selectProject(projectName) {
-    selectedProject = projectName;
-    
-    // Обновляем классы selected у опций
-    const options = document.querySelectorAll('.dropdown-option');
     options.forEach(option => {
-        if (option.getAttribute('data-project-name') === projectName) {
-            option.classList.add('selected');
-        } else {
-            option.classList.remove('selected');
+        const domain = option.getAttribute('data-domain').toLowerCase();
+        option.style.display = domain.includes(searchTerm) ? 'block' : 'none';
+    });
+}
+
+// Фильтрация кампаний
+function filterCampaigns() {
+    const searchInput = document.getElementById('campaignSearch');
+    const searchTerm = searchInput.value.toLowerCase();
+    const options = document.querySelectorAll('#campaignOptions .checkbox-option');
+    
+    options.forEach(option => {
+        const label = option.querySelector('label');
+        if (label) {
+            const campaignId = label.textContent.toLowerCase();
+            option.style.display = campaignId.includes(searchTerm) ? 'flex' : 'none';
         }
     });
-    
-    // Обновляем поле ввода
-    const dropdownInput = document.getElementById('projectsDropdown');
-    dropdownInput.value = selectedProject;
-    dropdownInput.placeholder = 'Нажмите для выбора проекта';
 }
 
-// Получение campaign_ids для выбранного проекта
-function getSelectedCampaignIds() {
-    return projectsMapping[selectedProject] || [];
-}
-
-// Функция для загрузки и отображения информации о кампаниях
-async function loadCampaignInfo(projectName) {
-    try {
-        const response = await fetch(`/api/campaign-info?projectName=${encodeURIComponent(projectName)}`);
-        if (!response.ok) {
-            throw new Error('Ошибка загрузки информации о кампаниях');
-        }
-        const campaignInfo = await response.json();
-        displayCampaignInfo(projectName, campaignInfo);
-    } catch (error) {
-        console.error('Error loading campaign info:', error);
-        displayCampaignInfo(projectName, []);
-    }
-}
-
-// Функция для отображения информации над таблицей
-// Функция для отображения информации над таблицей
-function displayCampaignInfo(projectName, campaigns) {
-    const tableContainer = document.getElementById('tableContainer');
+// Функция сброса всех фильтров
+function resetAllFilters() {
+    // Сбрасываем выбранные кампании
+    selectedCampaigns.clear();
     
-    // Создаем или находим контейнер для информации
-    let infoContainer = document.getElementById('campaignInfoContainer');
-    if (!infoContainer) {
-        infoContainer = document.createElement('div');
-        infoContainer.id = 'campaignInfoContainer';
-        infoContainer.className = 'campaign-info';
-        tableContainer.parentNode.insertBefore(infoContainer, tableContainer);
-    }
+    // Сбрасываем выбранный домен
+    selectedDomain = null;
     
-    if (campaigns.length === 0) {
-        infoContainer.innerHTML = `
-            <div class="campaign-info-card">
-                <p>Информация о кампаниях недоступна</p>
-            </div>
-        `;
-        return;
-    }
+    // Сбрасываем поля фильтров
+    document.getElementById('domainFilter').value = '';
+    document.getElementById('domainFilter').placeholder = 'Выберите проект сначала';
+    document.getElementById('campaignFilter').value = '';
+    document.getElementById('campaignFilter').placeholder = 'Выберите домен сначала';
     
-    // Группируем кампании по доменам
-    const domainsMap = {};
-    campaigns.forEach(campaign => {
-        if (!domainsMap[campaign.domain]) {
-            domainsMap[campaign.domain] = [];
-        }
-        domainsMap[campaign.domain].push(campaign);
-    });
+    // Сбрасываем выбранный проект (но оставляем FONTANKA по умолчанию)
+    const projectNames = Object.keys(projectsMapping);
+    const defaultProject = projectNames.find(name => 
+        name.toUpperCase() === 'FONTANKA'
+    ) || projectNames[0];
     
-    const domains = Object.keys(domainsMap);
-    
-    let infoHTML = `
-        <div class="campaign-info-card">
-            <div class="campaign-count-total">
-                <strong>Всего кампаний:</strong> ${campaigns.length}
-            </div>
-    `;
-    
-    // Для каждого домена создаем отдельную секцию
-    domains.forEach(domain => {
-        const domainCampaigns = domainsMap[domain];
+    if (defaultProject) {
+        // Просто обновляем отображение без перезагрузки данных
+        selectedProject = defaultProject;
+        document.getElementById('projectsDropdown').value = defaultProject;
         
-        infoHTML += `
-            <div class="domain-section">
-                <div class="domain-header">
-                    <strong>Домен:</strong> ${domain || 'Не указан'}
-                    <span class="domain-campaign-count">(кампаний: ${domainCampaigns.length})</span>
-                </div>
-                <div class="campaigns-section">
-                    <div class="campaign-list">
-                        ${domainCampaigns.map(campaign => `
-                            <span class="campaign-id" title="Campaign ID: ${campaign.campaign_id}">
-                                ${campaign.campaign_id}
-                            </span>
-                        `).join('')}
-                    </div>
-                </div>
-            </div>
-        `;
-    });
-
-    infoHTML += `</div>`;
-    infoContainer.innerHTML = infoHTML;
+        // Загружаем домены и кампании заново
+        loadDomainsAndCampaigns(defaultProject);
+    }
+    
+    // Сбрасываем дату на сегодня
+    document.getElementById('dateFilter').valueAsDate = new Date();
+    
+    // Очищаем сообщения
+    document.getElementById('message').innerHTML = '';
+    
+    // Очищаем таблицу
+    document.getElementById('tableContainer').innerHTML = '';
+    
+    // Блокируем кнопку скачивания
+    document.getElementById('downloadBtn').disabled = true;
+    
+    // Очищаем текущие данные
+    currentData = [];
+    
+    // Закрываем все dropdown'ы
+    closeAllDropdowns();
+    
+    console.log('Все фильтры сброшены');
 }
 
+// Основная функция загрузки данных
 async function loadData() {
     const dateFilter = document.getElementById('dateFilter').value;
     const messageDiv = document.getElementById('message');
@@ -239,11 +525,6 @@ async function loadData() {
     // Очистка предыдущих сообщений и данных
     messageDiv.innerHTML = '';
     document.getElementById('tableContainer').innerHTML = '';
-    
-    // Очищаем информацию о кампаниях
-    const infoContainer = document.getElementById('campaignInfoContainer');
-    if (infoContainer) infoContainer.remove();
-    
     downloadBtn.disabled = true;
     currentData = [];
 
@@ -252,12 +533,14 @@ async function loadData() {
         return;
     }
 
+    if (selectedCampaigns.size === 0) {
+        messageDiv.innerHTML = '<div class="error">Пожалуйста, выберите хотя бы одну кампанию</div>';
+        return;
+    }
+
     loadingDiv.style.display = 'block';
 
     try {
-        // Загружаем информацию о кампаниях
-        await loadCampaignInfo(selectedProject);
-        
         const campaignIds = getSelectedCampaignIds();
 
         const response = await fetch('/api/nps-data', {
@@ -282,8 +565,6 @@ async function loadData() {
         }
 
         currentData = data;
-
-        // Автоматически сортируем данные по возрастанию даты
         sortTable();
 
         messageDiv.innerHTML = `<div class="success">Найдено записей: ${data.length}</div>`;
@@ -497,13 +778,12 @@ function escapeHtml(unsafe) {
 
 // Инициализация при загрузке страницы
 document.addEventListener('click', function(e) {
-    const dropdown = document.querySelector('.dropdown');
-    if (!dropdown.contains(e.target)) {
-        closeDropdown();
+    if (!e.target.closest('.dropdown')) {
+        closeAllDropdowns();
     }
 });
+
 document.addEventListener('DOMContentLoaded', function() {
     loadProjects();
-    // Автозаполнение текущей даты
     document.getElementById('dateFilter').valueAsDate = new Date();
 });

@@ -11,6 +11,35 @@ body {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+/* Стили для заголовка с кнопкой сброса */
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+.header-row h1 {
+    margin: 0;
+    color: #333;
+}
+
+/* Кнопка Сбросить все */
+.reset-all-btn {
+    background-color: #f9f9f9;
+    color: rgb(0, 0, 0);
+    border: 1px solid #ddd;
+    padding: 10px 20px;
+    border-radius: 14px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+.reset-all-btn:hover {
+    background-color: #e3e3e3;
+}
 .form-row {
     display: flex;
     gap: 30px;
@@ -35,7 +64,7 @@ body {
 label {
     display: block;
     margin-bottom: 5px;
-    margin-left: 5px;
+    margin-left: 8px;
     font-weight: lighter;
     font-size: 16px;
 }
@@ -242,70 +271,90 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     font-style: italic;
     text-align: center;
 }
-/* Стили для информации о кампаниях */
-.campaign-info {
-    margin-top: 20px;
-    margin-bottom: 20px;
+
+/* Стили для фильтров */
+.filter-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
 }
-.campaign-info-card {
-    background: #e3e3e3;
-    border: 1px solid #545454;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 15px;
-}
-.campaign-info-card h3 {
-    margin: 0 0 12px 0;
-    color: #333;
-    font-size: 18px;
-    border-bottom: 2px solid #007bff;
-    padding-bottom: 8px;
-}
-.campaign-count-total {
-    margin-bottom: 12px;
-    padding: 8px 12px;
-    background: #e7f3ff;
-    border-radius: 4px;
-    font-size: 14px;
-}
-.domain-section {
-    margin-bottom: 12px;
-    padding: 12px;
-    background: white;
-    border-radius: 6px;
-    border: 1px solid #dee2e6;
-}
-.domain-header {
-    margin-bottom: 10px;
-    font-size: 16px;
-    display: block;
-    justify-content: space-between;
-    align-items: center;
-}
-.domain-campaign-count {
-    font-size: 14px;
-    color: #6c757d;
+
+.filter-group label {
+    margin-bottom: 8px;
     font-weight: normal;
+    color: #555;
 }
-.campaigns-section {
-    font-size: 14px;
+
+/* Стили для чекбоксов в выпадающем списке */
+.checkbox-controls {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    background-color: #f8f9fa;
+    display: flex;
+    gap: 8px;
 }
-.campaign-list {
-    display: block;
-    flex-wrap: wrap;
-    gap: 8px, 10px;
-    padding: 4px 0px;
-    margin-top: 5px;
-    margin-bottom: 5px;
-    align-items: flex-start;
-}
-.campaign-id {
-    background: #e7f3ff;
-    border: 1px solid #dadada;
-    color: rgb(0, 0, 0);
-    padding: 6px 8px;
+
+.select-all-btn, .deselect-all-btn {
+    padding: 6px 12px;
+    border: none;
     border-radius: 4px;
+    cursor: pointer;
     font-size: 12px;
-    font-family: monospace;
-    margin-right: 10px;
+    flex: 1;
+}
+
+.select-all-btn {
+    background-color: #007bff;
+    color: white;
+}
+
+.select-all-btn:hover {
+    background-color: #0056b3;
+}
+
+.deselect-all-btn {
+    background-color: #6c757d;
+    color: white;
+}
+
+.deselect-all-btn:hover {
+    background-color: #545b62;
+}
+
+.checkbox-option {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+}
+
+.checkbox-option:hover {
+    background-color: #f8f9fa;
+}
+
+.checkbox-option input[type="checkbox"] {
+    margin: 0;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.checkbox-option label {
+    margin: 0;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: normal;
+    flex: 1;
+}
+
+.checkbox-option.selected {
+    background-color: #e7f3ff;
+}
+
+/* Увеличиваем максимальную высоту для списков с чекбоксами */
+#campaignOptions {
+    max-height: 400px;
+    overflow-y: auto;
 }
