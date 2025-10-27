@@ -54,12 +54,14 @@
 - **Frontend**: Vanilla JavaScript, HTML5, CSS3
 - **Database**: PostgreSQL
 - **Environment**: dotenv для конфигурации
+- **Containerization**: Docker, Docker Compose
 
 ## Требования
 
-- Node.js 14+
+- Node.js 14+ (для локального запуска)
 - PostgreSQL
 - Доступ к базе данных `service-nps`
+- Docker (для контейнеризованного запуска)
 
 ## Настройка .env файла
 
@@ -86,7 +88,7 @@ git clone git@github.com:zdd95/nps-db.git
 npm init -y
 npm install express pg cors dotenv
 ```
-### 2. Запуск и стоп
+### 2. Запуск и стоп локально
 
 ```bash
 # Запуск приложения
@@ -128,6 +130,53 @@ kill -9 <номер_процесса>
 ./stop.sh
 # или
 npm run stop
+```
+
+### 3. Запуск и стоп в docker
+
+```bash
+# Сборка и запуск контейнеров
+## при первом запуске и после изменений в коде
+docker-compose up -d --build
+
+# Обычный перезапуск (без изменений кода)
+docker-compose up -d
+
+# Проверка статуса
+docker-compose ps
+
+# Остановка приложения
+docker-compose down
+
+# Перезапуск
+docker-compose restart
+
+# Статистика использования ресурсов
+docker stats
+
+# Проверка здоровья приложения
+curl http://localhost:3000/health
+
+### Мониторинг
+
+# Просмотр логов приложения
+docker-compose logs nps-app
+
+# Логи в реальном времени
+docker-compose logs -f nps-app
+```
+
+### Доступ к приложению
+
+После запуска приложение доступно по:
+- **Локально**: `http://localhost:3000`
+- **В сети**: `http://ВАШ-IP-АДРЕС:3000`
+
+Чтобы узнать IP адрес сервера:
+```bash
+hostname -I  # Linux
+ipconfig     # Windows
+ifconfig     # macOS
 ```
 
 ## P.S.
