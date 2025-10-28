@@ -92,7 +92,12 @@ async function selectProject(projectName) {
     
     // Очищаем таблицу при смене проекта
     document.getElementById('tableContainer').innerHTML = '';
+    // Скрываем пагинацию при смене проекта
+    const pagination = document.getElementById('paginationContainer');
+    if (pagination) pagination.style.display = 'none';
     document.getElementById('downloadBtn').disabled = true;
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    if (analyzeBtn) analyzeBtn.disabled = true;
     document.getElementById('message').innerHTML = '';
     currentData = [];
 }
@@ -505,9 +510,14 @@ function resetAllFilters() {
     
     // Очищаем таблицу
     document.getElementById('tableContainer').innerHTML = '';
+    // Скрываем пагинацию
+    const pagination = document.getElementById('paginationContainer');
+    if (pagination) pagination.style.display = 'none';
     
     // Блокируем кнопку скачивания
     document.getElementById('downloadBtn').disabled = true;
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    if (analyzeBtn) analyzeBtn.disabled = true;
     
     // Очищаем текущие данные
     currentData = [];
@@ -575,6 +585,8 @@ async function loadData() {
 
         messageDiv.innerHTML = `<div class="success">Найдено записей: ${data.length}</div>`;
         downloadBtn.disabled = false;
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        if (analyzeBtn) analyzeBtn.disabled = data.length === 0;
 
     } catch (error) {
         console.error('Error:', error);
@@ -748,6 +760,129 @@ function downloadCSV() {
     document.body.removeChild(link);
 }
 
+// ===== Analysis Modal =====
+function openAnalysisModal() {
+    if (!currentData || currentData.length === 0) {
+        alert('Нет данных для анализа');
+        return;
+    }
+    const overlay = document.getElementById('analysisModal');
+    const body = document.getElementById('analysisBody');
+    try {
+        body.innerHTML = buildAnalysisReportHtml();
+    } catch (err) {
+        console.error('Analysis modal render error:', err);
+        body.innerHTML = `<div class="error">Ошибка при формировании отчета: ${escapeHtml(err && err.message ? err.message : String(err))}</div>`;
+    }
+    overlay.style.display = 'flex';
+}
+
+function closeAnalysisModal() {
+    const overlay = document.getElementById('analysisModal');
+    overlay.style.display = 'none';
+}
+
+function buildAnalysisReportHtml() {
+    const domainName = selectedDomain || '—';
+    const byCampaign = new Map();
+    let totalScores = [];
+    const npsCountersProject = { promoter: 0, passiv: 0, critic: 0 };
+
+    currentData.forEach(row => {
+        const campaignId = row.campaign_id;
+        const score = typeof row.score === 'number' ? row.score : (row.score ? Number(row.score) : null);
+        if (!byCampaign.has(campaignId)) byCampaign.set(campaignId, []);
+        byCampaign.get(campaignId).push(row);
+        if (score !== null && !Number.isNaN(score)) {
+            totalScores.push(score);
+            const type = classifyNps(score);
+            npsCountersProject[type] += 1;
+        }
+    });
+
+    let html = '';
+    html += `<div class="analysis-header">`
+          + `<div class="analysis-title"><strong>Проект:</strong> ${escapeHtml(selectedProject || '—')}</div>`
+          + `<div class="analysis-title"><strong>Домен:</strong> ${escapeHtml(domainName)}</div>`
+          + `</div>`;
+
+    byCampaign.forEach((rows, campaignId) => {
+        const scores = rows.map(r => typeof r.score === 'number' ? r.score : (r.score ? Number(r.score) : null)).filter(s => s !== null && !Number.isNaN(s));
+        const avg = scores.length ? (scores.reduce((a,b)=>a+b,0) / scores.length) : null;
+        const npsCounters = { promoter: 0, passiv: 0, critic: 0 };
+        scores.forEach(s => { npsCounters[classifyNps(s)] += 1; });
+        const npsScore = calcNpsFromCounters(npsCounters);
+
+        html += '<div class="campaign-card">';
+        html += `<div class="campaign-card__header">Кампания <span class="badge">${escapeHtml(String(campaignId))}</span></div>`;
+        html += '<div class="kpi-grid">';
+        html += metricHtml('Средний score', avg !== null ? avg.toFixed(2) : '—');
+        html += metricHtml('promoter (9-10)', String(npsCounters.promoter));
+        html += metricHtml('passiv (7-8)', String(npsCounters.passiv));
+        html += metricHtml('critic (0-6)', String(npsCounters.critic));
+        html += metricHtml('NPS, %', `${npsScore.toFixed(2)}%`);
+        html += '</div>';
+        html += '</div>';
+    });
+
+    const projectAvg = totalScores.length ? (totalScores.reduce((a,b)=>a+b,0) / totalScores.length) : null;
+    const projectNps = calcNpsFromCounters(npsCountersProject);
+    if (byCampaign.size > 1) {
+        html += `<div class="summary-box">`
+             + `<div class="summary-title"><strong>Сводка по проекту</strong></div>`
+             + `<div class="kpi-grid">`
+             + metricHtml('Средний score по проекту', projectAvg !== null ? projectAvg.toFixed(2) : '—')
+             + metricHtml('Всего promoter', String(npsCountersProject.promoter))
+             + metricHtml('Всего passiv', String(npsCountersProject.passiv))
+             + metricHtml('Всего critic', String(npsCountersProject.critic))
+             + metricHtml('NPS проекта, %', `${projectNps.toFixed(2)}%`)
+             + `</div>`
+             + `<div class="formula">Формула NPS: ((promoter − critic) / (promoter + passiv + critic)) × 100%</div>`
+             + `</div>`;
+    } else {
+        // Только формула, если выбрана одна кампания
+        html += `<div class="formula">Формула NPS: ((promoter − critic) / (promoter + passiv + critic)) × 100%</div>`;
+    }
+
+    // ТОП-5 полезных комментариев по кампаниям (для любого количества кампаний)
+    const topComments = selectTopComments(currentData, 5);
+    if (topComments.length > 0) {
+        html += `<div class="top-comments">`
+             + `<h3 class="top-comments__title">ТОП‑5 полезных комментариев</h3>`
+             + `<table class="comments-table">`
+             + `<thead><tr>`
+             + `<th>Кампания</th><th>Категория</th><th>Score</th><th>Email</th><th>Комментарий</th>`
+             + `</tr></thead><tbody>`;
+        topComments.forEach(c => {
+            html += `<tr>`
+                 + `<td>${escapeHtml(String(c.campaign_id || ''))}</td>`
+                 + `<td>${escapeHtml(c.category || '')}</td>`
+                 + `<td>${escapeHtml(c.score !== null && c.score !== undefined ? String(c.score) : '')}</td>`
+                 + `<td>${escapeHtml(c.email || '')}</td>`
+                 + `<td class="comment-text">${escapeHtml(c.text || '')}</td>`
+                 + `</tr>`;
+        });
+        html += `</tbody></table></div>`;
+    }
+
+    return html;
+}
+
+function metricHtml(label, value) {
+    return `<div class="kpi"><div class="kpi__label">${label}</div><div class="kpi__value">${value}</div></div>`;
+}
+
+function classifyNps(score) {
+    if (score >= 9) return 'promoter';
+    if (score >= 7) return 'passiv';
+    return 'critic';
+}
+
+function calcNpsFromCounters(counters) {
+    const total = counters.promoter + counters.passiv + counters.critic;
+    if (total === 0) return 0;
+    return ((counters.promoter - counters.critic) / total) * 100;
+}
 function formatDate(dateString) {
     if (!dateString) return '';
 
@@ -852,6 +987,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Expose to later calls after data rendering
     window.__updateScrollFabVisibility = updateScrollFabVisibility;
+
+    // Modal events
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const analysisCloseBtn = document.getElementById('analysisCloseBtn');
+    const analysisOkBtn = document.getElementById('analysisOkBtn');
+    const analysisOverlay = document.getElementById('analysisModal');
+
+    if (analyzeBtn) analyzeBtn.addEventListener('click', openAnalysisModal);
+    if (analysisCloseBtn) analysisCloseBtn.addEventListener('click', closeAnalysisModal);
+    if (analysisOkBtn) analysisOkBtn.addEventListener('click', closeAnalysisModal);
+    if (analysisOverlay) analysisOverlay.addEventListener('click', function(e) {
+        if (e.target === analysisOverlay) closeAnalysisModal();
+    });
 });
 
 function renderCurrentView() {
@@ -908,4 +1056,89 @@ function updatePaginationUI(totalCount, totalPages) {
     if (prevBtn) prevBtn.disabled = isFirst;
     if (nextBtn) nextBtn.disabled = isLast;
     if (lastBtn) lastBtn.disabled = isLast;
+}
+
+// ===== Helpers for comments extraction =====
+function selectTopComments(rows, limit) {
+    const items = [];
+    rows.forEach(r => {
+        const scoreNum = typeof r.score === 'number' ? r.score : (r.score ? Number(r.score) : null);
+        const parsed = extractFeedbackMeta(r.feedback);
+        const text = parsed.text || (typeof r.feedback === 'string' ? r.feedback : '');
+        const email = parsed.email || '';
+        const category = parsed.category || '';
+        const lengthScore = text ? text.length : 0;
+        if (!text || lengthScore < 5) return;
+        const typeOrder = scoreNum === null ? 1 : (scoreNum <= 6 ? 0 : (scoreNum <= 8 ? 1 : 2));
+        const time = r.created_at ? new Date(r.created_at).getTime() : 0;
+        items.push({
+            campaign_id: r.campaign_id,
+            score: scoreNum,
+            email,
+            category,
+            text,
+            typeOrder,
+            lengthScore,
+            time
+        });
+    });
+    items.sort((a,b) => {
+        if (a.typeOrder !== b.typeOrder) return a.typeOrder - b.typeOrder; // critics first
+        if (a.lengthScore !== b.lengthScore) return b.lengthScore - a.lengthScore; // longer first
+        return b.time - a.time; // newer first
+    });
+    return items.slice(0, limit);
+}
+
+function extractFeedbackMeta(feedback) {
+    let raw = feedback;
+    let obj = null;
+    if (typeof raw === 'string') {
+        try {
+            obj = JSON.parse(raw);
+        } catch (_) {
+            obj = null;
+        }
+    } else if (typeof raw === 'object' && raw !== null) {
+        obj = raw;
+    }
+
+    const get = (o, pathArr) => {
+        try {
+            return pathArr.reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), o);
+        } catch (_) { return undefined; }
+    };
+
+    const textCandidates = [];
+    const emailCandidates = [];
+    const categoryCandidates = [];
+
+    if (obj) {
+        ['text','message','comment','feedback','body','content','reason'].forEach(k => {
+            const v = obj[k]; if (typeof v === 'string') textCandidates.push(v);
+        });
+        const nestedText = get(obj, ['data','text']) || get(obj, ['payload','text']);
+        if (typeof nestedText === 'string') textCandidates.push(nestedText);
+
+        ['email','user_email','contact','userEmail'].forEach(k => {
+            const v = obj[k]; if (typeof v === 'string') emailCandidates.push(v);
+        });
+        const nestedEmail = get(obj, ['user','email']) || get(obj, ['contact','email']);
+        if (typeof nestedEmail === 'string') emailCandidates.push(nestedEmail);
+
+        ['category','type','label','tag'].forEach(k => {
+            const v = obj[k]; if (typeof v === 'string') categoryCandidates.push(v);
+        });
+        const nestedCategory = get(obj, ['meta','category']);
+        if (typeof nestedCategory === 'string') categoryCandidates.push(nestedCategory);
+    }
+
+    const fallbackText = typeof feedback === 'string' ? feedback : '';
+    const clean = s => s ? String(s).trim() : '';
+
+    return {
+        text: clean(textCandidates.find(Boolean) || fallbackText),
+        email: clean(emailCandidates.find(Boolean) || ''),
+        category: clean(categoryCandidates.find(Boolean) || '')
+    };
 }
