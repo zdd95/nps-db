@@ -3,6 +3,9 @@ let selectedProject = null;
 let projectsMapping = {};
 let sortField = 'created_at';
 let sortOrder = 'asc';
+let currentPage = 1;
+let pageSize = 25;
+let lastSortedData = [];
 
 // Данные для фильтров
 let domains = [];
@@ -525,8 +528,10 @@ async function loadData() {
     // Очистка предыдущих сообщений и данных
     messageDiv.innerHTML = '';
     document.getElementById('tableContainer').innerHTML = '';
+    document.getElementById('paginationContainer').style.display = 'none';
     downloadBtn.disabled = true;
     currentData = [];
+    currentPage = 1;
 
     if (!selectedProject) {
         messageDiv.innerHTML = '<div class="error">Пожалуйста, выберите проект</div>';
@@ -565,6 +570,7 @@ async function loadData() {
         }
 
         currentData = data;
+        currentPage = 1;
         sortTable();
 
         messageDiv.innerHTML = `<div class="success">Найдено записей: ${data.length}</div>`;
@@ -608,8 +614,8 @@ function sortTable() {
         if (valueA > valueB) return sortOrder === 'asc' ? 1 : -1;
         return 0;
     });
-    
-    displayTable(sortedData);
+    lastSortedData = sortedData;
+    renderCurrentView();
 }
 
 function displayTable(data) {
@@ -617,6 +623,7 @@ function displayTable(data) {
     
     if (data.length === 0) {
         tableContainer.innerHTML = '<p>Нет данных для отображения</p>';
+        document.getElementById('paginationContainer').style.display = 'none';
         return;
     }
 
@@ -663,7 +670,7 @@ function sortByColumn(column) {
         sortField = column;
         sortOrder = 'desc';
     }
-    
+    currentPage = 1;
     sortTable();
 }
 
@@ -790,4 +797,115 @@ document.addEventListener('click', function(e) {
 document.addEventListener('DOMContentLoaded', function() {
     loadProjects();
     document.getElementById('dateFilter').valueAsDate = new Date();
+
+    // Pagination controls wiring
+    const pageSizeSelect = document.getElementById('pageSizeSelect');
+    const firstBtn = document.getElementById('firstPageBtn');
+    const prevBtn = document.getElementById('prevPageBtn');
+    const nextBtn = document.getElementById('nextPageBtn');
+    const lastBtn = document.getElementById('lastPageBtn');
+
+    if (pageSizeSelect) {
+        pageSizeSelect.value = String(pageSize);
+        pageSizeSelect.addEventListener('change', function() {
+            const newSize = parseInt(this.value, 10);
+            if (!Number.isNaN(newSize) && newSize > 0) {
+                pageSize = newSize;
+                currentPage = 1;
+                renderCurrentView();
+            }
+        });
+    }
+
+    if (firstBtn) firstBtn.addEventListener('click', function() { setPage(1); });
+    if (prevBtn) prevBtn.addEventListener('click', function() { setPage(currentPage - 1); });
+    if (nextBtn) nextBtn.addEventListener('click', function() { setPage(currentPage + 1); });
+    if (lastBtn) lastBtn.addEventListener('click', function() { setPage(getTotalPages()); });
+
+    // Floating scroll buttons
+    const scrollFab = document.querySelector('.scroll-fab');
+    const scrollUpBtn = document.getElementById('scrollUpBtn');
+    const scrollDownBtn = document.getElementById('scrollDownBtn');
+
+    function updateScrollFabVisibility() {
+        const isScrollable = document.documentElement.scrollHeight > window.innerHeight + 200;
+        if (scrollFab) scrollFab.classList.toggle('hidden', !isScrollable);
+    }
+
+    if (scrollUpBtn) scrollUpBtn.addEventListener('click', function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    if (scrollDownBtn) scrollDownBtn.addEventListener('click', function() {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    });
+
+    // Update visibility on load, resize, and after rendering
+    updateScrollFabVisibility();
+    window.addEventListener('resize', updateScrollFabVisibility);
+    window.addEventListener('scroll', function() {
+        // Hide "up" button near top, hide "down" near bottom
+        const nearTop = window.scrollY < 100;
+        const nearBottom = (window.innerHeight + window.scrollY) > (document.documentElement.scrollHeight - 100);
+        if (scrollUpBtn) scrollUpBtn.style.opacity = nearTop ? '0.5' : '1';
+        if (scrollDownBtn) scrollDownBtn.style.opacity = nearBottom ? '0.5' : '1';
+    });
+
+    // Expose to later calls after data rendering
+    window.__updateScrollFabVisibility = updateScrollFabVisibility;
 });
+
+function renderCurrentView() {
+    const total = lastSortedData.length;
+    if (total === 0) {
+        displayTable([]);
+        return;
+    }
+    const totalPages = getTotalPages();
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, total);
+    const pageSlice = lastSortedData.slice(startIndex, endIndex);
+    displayTable(pageSlice);
+    updatePaginationUI(total, totalPages);
+    if (window.__updateScrollFabVisibility) window.__updateScrollFabVisibility();
+}
+
+function getTotalPages() {
+    return Math.max(1, Math.ceil(currentData.length / pageSize));
+}
+
+function setPage(page) {
+    const totalPages = getTotalPages();
+    const newPage = Math.min(Math.max(1, page), totalPages);
+    if (newPage !== currentPage) {
+        currentPage = newPage;
+        renderCurrentView();
+    }
+}
+
+function updatePaginationUI(totalCount, totalPages) {
+    const container = document.getElementById('paginationContainer');
+    const pageInfo = document.getElementById('pageInfo');
+    const totalCountEl = document.getElementById('totalCount');
+    const prevBtn = document.getElementById('prevPageBtn');
+    const nextBtn = document.getElementById('nextPageBtn');
+    const firstBtn = document.getElementById('firstPageBtn');
+    const lastBtn = document.getElementById('lastPageBtn');
+
+    if (!container) return;
+
+    // Показать контейнер, если есть данные
+    container.style.display = totalCount > 0 ? 'flex' : 'none';
+
+    if (pageInfo) pageInfo.textContent = `Страница ${currentPage} из ${totalPages}`;
+    if (totalCountEl) totalCountEl.textContent = `Всего: ${totalCount}`;
+
+    const isFirst = currentPage === 1;
+    const isLast = currentPage === totalPages;
+    if (firstBtn) firstBtn.disabled = isFirst;
+    if (prevBtn) prevBtn.disabled = isFirst;
+    if (nextBtn) nextBtn.disabled = isLast;
+    if (lastBtn) lastBtn.disabled = isLast;
+}
