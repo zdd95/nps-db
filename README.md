@@ -73,7 +73,6 @@ DB_NAME=service-nps
 DB_USER=your_username_here
 DB_PASSWORD=your_password_here
 DB_SSL=false
-PORT=3000
 ```
 
 ## Установка и запуск
