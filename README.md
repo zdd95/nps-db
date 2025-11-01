@@ -84,8 +84,7 @@ DB_SSL=false
 git clone git@github.com:zdd95/nps-db.git
 
 # Установите зависимости
-npm init -y
-npm install express pg cors dotenv
+npm install
 ```
 ### 2. Запуск и стоп локально
 
