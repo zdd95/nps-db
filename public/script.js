@@ -630,6 +630,37 @@ function sortTable() {
     renderCurrentView();
 }
 
+// Функция для вычисления периода данных
+function calculateDataPeriod() {
+    if (!currentData || currentData.length === 0) {
+        return null;
+    }
+    
+    const dates = currentData
+        .map(row => row.created_at ? new Date(row.created_at) : null)
+        .filter(date => date !== null && !isNaN(date.getTime()));
+    
+    if (dates.length === 0) {
+        return null;
+    }
+    
+    const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+    const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+    
+    // Форматируем даты в ДД.ММ.ГГГГ
+    const formatDateForPeriod = (date) => {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}.${month}.${year}`;
+    };
+    
+    return {
+        min: formatDateForPeriod(minDate),
+        max: formatDateForPeriod(maxDate)
+    };
+}
+
 function displayTable(data) {
     const tableContainer = document.getElementById('tableContainer');
     
@@ -639,7 +670,16 @@ function displayTable(data) {
         return;
     }
 
-    let tableHTML = `
+    // Вычисляем период данных
+    const period = calculateDataPeriod();
+    let periodHTML = '';
+    if (period) {
+        periodHTML = `<div class="data-period" style="margin-bottom: 15px; padding: 10px; background-color: #f5f5f5; border-radius: 4px; font-size: 14px;">`
+                  + `<strong>Данные за период:</strong> с ${escapeHtml(period.min)} по ${escapeHtml(period.max)}`
+                  + `</div>`;
+    }
+
+    let tableHTML = periodHTML + `
         <table>
             <thead>
                 <tr>
@@ -800,10 +840,18 @@ function buildAnalysisReportHtml() {
         }
     });
 
+    // Вычисляем период данных (минимальная и максимальная дата по created_at)
+    let periodDisplay = '—';
+    const period = calculateDataPeriod();
+    if (period) {
+        periodDisplay = `с ${period.min} по ${period.max}`;
+    }
+
     let html = '';
     html += `<div class="analysis-header">`
           + `<div class="analysis-title"><strong>Проект:</strong> ${escapeHtml(selectedProject || '—')}</div>`
           + `<div class="analysis-title"><strong>Домен:</strong> ${escapeHtml(domainName)}</div>`
+          + `<div class="analysis-title"><strong>Данные за период:</strong> ${escapeHtml(periodDisplay)}</div>`
           + `</div>`;
 
     byCampaign.forEach((rows, campaignId) => {
@@ -848,7 +896,7 @@ function buildAnalysisReportHtml() {
     const topComments = selectTopComments(currentData, 5);
     if (topComments.length > 0) {
         html += `<div class="top-comments">`
-             + `<h3 class="top-comments__title">ТОП‑5 полезных комментариев</h3>`
+             + `<h3 class="top-comments__title">ТОП‑5 комментариев</h3>`
              + `<table class="comments-table">`
              + `<thead><tr>`
              + `<th>Кампания</th><th>Категория</th><th>Score</th><th>Email</th><th>Комментарий</th>`
