@@ -44,7 +44,7 @@
                     <input type="text"
                            id="domainFilter"
                            class="dropdown-input"
-                           placeholder="Выберите проект сначала"
+                           placeholder="Выберите проект"
                            readonly
                            onclick="toggleDomainDropdown()">
                     <div class="dropdown-list" id="domainList">
@@ -67,7 +67,7 @@
                     <input type="text"
                            id="campaignFilter"
                            class="dropdown-input"
-                           placeholder="Выберите домен сначала"
+                           placeholder="Выберите домен"
                            readonly
                            onclick="toggleCampaignDropdown()">
                     <div class="dropdown-list" id="campaignList">
@@ -88,11 +88,20 @@
                 </div>
             </div>
             
-            <!-- Фильтр: Дата (с) -->
-            <div class="filter-group">
-                <label for="dateFilter">Дата (с):</label>
-                <div class="date-input-wrapper">
-                    <input type="date" id="dateFilter">
+            <!-- Фильтр: Диапазон дат -->
+            <div class="date-filters-inline">
+                <div class="filter-group">
+                    <label for="dateFromFilter">Дата с:</label>
+                    <div class="date-input-wrapper">
+                        <input type="date" id="dateFromFilter">
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label for="dateToFilter">Дата по:</label>
+                    <div class="date-input-wrapper">
+                        <input type="date" id="dateToFilter">
+                    </div>
                 </div>
             </div>
         </div>

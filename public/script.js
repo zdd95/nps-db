@@ -13,6 +13,20 @@ let selectedDomain = null;
 let campaigns = [];
 let selectedCampaigns = new Set();
 
+function setTodayDateRange() {
+    const today = new Date();
+    const dateFromFilter = document.getElementById('dateFromFilter');
+    const dateToFilter = document.getElementById('dateToFilter');
+
+    if (dateFromFilter) {
+        dateFromFilter.valueAsDate = today;
+    }
+
+    if (dateToFilter) {
+        dateToFilter.valueAsDate = today;
+    }
+}
+
 // Загрузка проектов с сервера
 async function loadProjects() {
     try {
@@ -196,7 +210,7 @@ function updateCampaignFilter() {
     }
     
     if (!selectedDomain) {
-        campaignFilter.placeholder = 'Выберите домен сначала';
+        campaignFilter.placeholder = 'Выберите домен';
         campaignFilter.value = '';
         return;
     }
@@ -299,7 +313,7 @@ function updateCampaignOptionsState() {
 function resetDomainFilter() {
     selectedDomain = null;
     document.getElementById('domainFilter').value = '';
-    document.getElementById('domainFilter').placeholder = 'Выберите проект сначала';
+    document.getElementById('domainFilter').placeholder = 'Выберите проект';
     resetCampaignFilter();
 }
 
@@ -307,7 +321,7 @@ function resetDomainFilter() {
 function resetCampaignFilter() {
     selectedCampaigns.clear();
     document.getElementById('campaignFilter').value = '';
-    document.getElementById('campaignFilter').placeholder = 'Выберите домен сначала';
+    document.getElementById('campaignFilter').placeholder = 'Выберите домен';
     updateCampaignOptions();
 }
 
@@ -483,9 +497,9 @@ function resetAllFilters() {
     
     // Сбрасываем поля фильтров
     document.getElementById('domainFilter').value = '';
-    document.getElementById('domainFilter').placeholder = 'Выберите проект сначала';
+    document.getElementById('domainFilter').placeholder = 'Выберите проект';
     document.getElementById('campaignFilter').value = '';
-    document.getElementById('campaignFilter').placeholder = 'Выберите домен сначала';
+    document.getElementById('campaignFilter').placeholder = 'Выберите домен';
     
     // Сбрасываем выбранный проект (но оставляем FONTANKA по умолчанию)
     const projectNames = Object.keys(projectsMapping);
@@ -502,8 +516,8 @@ function resetAllFilters() {
         loadDomainsAndCampaigns(defaultProject);
     }
     
-    // Сбрасываем дату на сегодня
-    document.getElementById('dateFilter').valueAsDate = new Date();
+    // Сбрасываем диапазон дат на сегодня
+    setTodayDateRange();
     
     // Очищаем сообщения
     document.getElementById('message').innerHTML = '';
@@ -530,7 +544,8 @@ function resetAllFilters() {
 
 // Основная функция загрузки данных
 async function loadData() {
-    const dateFilter = document.getElementById('dateFilter').value;
+    const dateFromFilter = document.getElementById('dateFromFilter').value;
+    const dateToFilter = document.getElementById('dateToFilter').value;
     const messageDiv = document.getElementById('message');
     const loadingDiv = document.getElementById('loading');
     const downloadBtn = document.getElementById('downloadBtn');
@@ -553,6 +568,16 @@ async function loadData() {
         return;
     }
 
+    if (!dateFromFilter || !dateToFilter) {
+        messageDiv.innerHTML = '<div class="error">Пожалуйста, выберите диапазон дат</div>';
+        return;
+    }
+
+    if (dateFromFilter > dateToFilter) {
+        messageDiv.innerHTML = '<div class="error">Дата "с" не может быть больше даты "по"</div>';
+        return;
+    }
+
     loadingDiv.style.display = 'block';
 
     try {
@@ -565,7 +590,8 @@ async function loadData() {
             },
             body: JSON.stringify({
                 campaignIds: campaignIds,
-                date: dateFilter
+                dateFrom: dateFromFilter,
+                dateTo: dateToFilter
             })
         });
 
@@ -979,7 +1005,7 @@ document.addEventListener('click', function(e) {
 
 document.addEventListener('DOMContentLoaded', function() {
     loadProjects();
-    document.getElementById('dateFilter').valueAsDate = new Date();
+    setTodayDateRange();
 
     // Pagination controls wiring
     const pageSizeSelect = document.getElementById('pageSizeSelect');
