@@ -59,7 +59,7 @@ function parseFeedback(feedback) {
 
 // API endpoint для получения данных
 app.post('/api/nps-data', async (req, res) => {
-    const { campaignIds, date } = req.body;
+    const { campaignIds, dateFrom, dateTo } = req.body;
 
     try {
         if (!campaignIds || !Array.isArray(campaignIds) || campaignIds.length === 0) {
@@ -78,10 +78,22 @@ app.post('/api/nps-data', async (req, res) => {
         const params = [...campaignIds];
         let paramIndex = campaignIds.length + 1;
 
-        // Добавляем фильтр по дате если указан
-        if (date) {
-            query += ` AND created_at >= $${paramIndex}`;
-            params.push(date + ' 00:00:00+07');
+        if ((dateFrom && !dateTo) || (!dateFrom && dateTo)) {
+            return res.status(400).json({ error: 'Нужно указать обе даты: dateFrom и dateTo' });
+        }
+
+        if (dateFrom && dateTo && dateFrom > dateTo) {
+            return res.status(400).json({ error: 'Дата "с" не может быть больше даты "по"' });
+        }
+
+        // Добавляем фильтр по диапазону дат если указан
+        if (dateFrom && dateTo) {
+            query += ` AND created_at >= $${paramIndex}::timestamptz`;
+            params.push(`${dateFrom} 00:00:00+07`);
+            paramIndex++;
+
+            query += ` AND created_at < ($${paramIndex}::timestamptz + INTERVAL '1 day')`;
+            params.push(`${dateTo} 00:00:00+07`);
             paramIndex++;
         }
 
