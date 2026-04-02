@@ -6,12 +6,25 @@ let sortOrder = 'asc';
 let currentPage = 1;
 let pageSize = 25;
 let lastSortedData = [];
+const EGOR_DESIRED_ERROR = 0.05;
+const EGOR_Z_SCORE = 1.96;
+let currentAnalysisDownloadAction = null;
 
 // Данные для фильтров
 let domains = [];
 let selectedDomain = null;
 let campaigns = [];
 let selectedCampaigns = new Set();
+
+function setDataActionButtonsDisabled(isDisabled) {
+    const downloadBtn = document.getElementById('downloadBtn');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const analyzeEgorBtn = document.getElementById('analyzeEgorBtn');
+
+    if (downloadBtn) downloadBtn.disabled = isDisabled;
+    if (analyzeBtn) analyzeBtn.disabled = isDisabled;
+    if (analyzeEgorBtn) analyzeEgorBtn.disabled = isDisabled;
+}
 
 function setTodayDateRange() {
     const today = new Date();
@@ -109,9 +122,7 @@ async function selectProject(projectName) {
     // Скрываем пагинацию при смене проекта
     const pagination = document.getElementById('paginationContainer');
     if (pagination) pagination.style.display = 'none';
-    document.getElementById('downloadBtn').disabled = true;
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    if (analyzeBtn) analyzeBtn.disabled = true;
+    setDataActionButtonsDisabled(true);
     document.getElementById('message').innerHTML = '';
     currentData = [];
 }
@@ -528,10 +539,8 @@ function resetAllFilters() {
     const pagination = document.getElementById('paginationContainer');
     if (pagination) pagination.style.display = 'none';
     
-    // Блокируем кнопку скачивания
-    document.getElementById('downloadBtn').disabled = true;
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    if (analyzeBtn) analyzeBtn.disabled = true;
+    // Блокируем вторичные действия до новой загрузки
+    setDataActionButtonsDisabled(true);
     
     // Очищаем текущие данные
     currentData = [];
@@ -548,13 +557,12 @@ async function loadData() {
     const dateToFilter = document.getElementById('dateToFilter').value;
     const messageDiv = document.getElementById('message');
     const loadingDiv = document.getElementById('loading');
-    const downloadBtn = document.getElementById('downloadBtn');
 
     // Очистка предыдущих сообщений и данных
     messageDiv.innerHTML = '';
     document.getElementById('tableContainer').innerHTML = '';
     document.getElementById('paginationContainer').style.display = 'none';
-    downloadBtn.disabled = true;
+    setDataActionButtonsDisabled(true);
     currentData = [];
     currentPage = 1;
 
@@ -610,9 +618,7 @@ async function loadData() {
         sortTable();
 
         messageDiv.innerHTML = `<div class="success">Найдено записей: ${data.length}</div>`;
-        downloadBtn.disabled = false;
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        if (analyzeBtn) analyzeBtn.disabled = data.length === 0;
+        setDataActionButtonsDisabled(data.length === 0);
 
     } catch (error) {
         console.error('Error:', error);
@@ -780,7 +786,7 @@ function downloadCSV() {
 
     // Создаем CSV заголовок
     const headers = ['client_user_id', 'campaign_id', 'score', 'feedback', 'created_at'];
-    let csvContent = headers.join(',') + '\n';
+    const csvRows = [headers];
 
     // Добавляем данные
     dataToExport.forEach(row => {
@@ -809,43 +815,83 @@ function downloadCSV() {
             
             return value;
         });
-        csvContent += rowData.join(',') + '\n';
+        csvRows.push(rowData);
     });
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
     
     const dateStr = new Date().toISOString().split('T')[0];
-    link.setAttribute('download', `nps_data_${selectedProject}_${dateStr}.csv`);
-    
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadCsvRows(csvRows, `nps_data_${selectedProject}_${dateStr}.csv`);
 }
 
 // ===== Analysis Modal =====
 function openAnalysisModal() {
+    openAnalysisModalWithBuilder('Отчет анализа данных', buildAnalysisReportHtml);
+}
+
+function openEgorAnalysisModal() {
+    openAnalysisModalWithBuilder(
+        'Отчет анализа данных (Скрипт Егора)',
+        buildEgorAnalysisReportHtml,
+        {
+            downloadAction: downloadEgorAnalysisCsv
+        }
+    );
+}
+
+function openAnalysisModalWithBuilder(title, builder, options = {}) {
     if (!currentData || currentData.length === 0) {
         alert('Нет данных для анализа');
         return;
     }
+
     const overlay = document.getElementById('analysisModal');
+    const modalTitle = document.getElementById('analysisTitle');
     const body = document.getElementById('analysisBody');
+    const footer = document.getElementById('analysisFooter');
+    const downloadBtn = document.getElementById('analysisDownloadBtn');
+
+    if (modalTitle) {
+        modalTitle.textContent = title;
+    }
+
+    currentAnalysisDownloadAction = typeof options.downloadAction === 'function' ? options.downloadAction : null;
+    if (footer) {
+        footer.classList.toggle('hidden', !currentAnalysisDownloadAction);
+    }
+    if (downloadBtn) {
+        downloadBtn.disabled = !currentAnalysisDownloadAction;
+    }
+
     try {
-        body.innerHTML = buildAnalysisReportHtml();
+        const content = builder();
+        if (typeof content === 'string') {
+            body.innerHTML = content;
+        } else if (content instanceof Node) {
+            body.replaceChildren(content);
+        } else {
+            body.innerHTML = '';
+        }
     } catch (err) {
         console.error('Analysis modal render error:', err);
         body.innerHTML = `<div class="error">Ошибка при формировании отчета: ${escapeHtml(err && err.message ? err.message : String(err))}</div>`;
     }
+
     overlay.style.display = 'flex';
 }
 
 function closeAnalysisModal() {
     const overlay = document.getElementById('analysisModal');
+    const footer = document.getElementById('analysisFooter');
+    const body = document.getElementById('analysisBody');
+
     overlay.style.display = 'none';
+    currentAnalysisDownloadAction = null;
+
+    if (footer) {
+        footer.classList.add('hidden');
+    }
+    if (body) {
+        body.innerHTML = '';
+    }
 }
 
 function buildAnalysisReportHtml() {
@@ -940,6 +986,282 @@ function buildAnalysisReportHtml() {
     }
 
     return html;
+}
+
+function buildEgorAnalysisReportHtml() {
+    const dataset = getEgorAnalysisDataset();
+    if (!dataset) {
+        return `<div class="error">Нет валидных значений score для расчета статистики.</div>`;
+    }
+
+    const fragment = cloneTemplate('egorAnalysisTemplate');
+
+    if (!fragment) {
+        return `<div class="error">Не найден HTML-шаблон отчета для аналитики Егора.</div>`;
+    }
+
+    setTemplateText(fragment, 'project', dataset.project);
+    setTemplateText(fragment, 'domain', dataset.domain);
+    setTemplateText(fragment, 'period', dataset.periodDisplay);
+    setTemplateText(
+        fragment,
+        'formula',
+        `Формулы: NPS = (promoters − detractors) / n, ошибка = Z × SE, Z = ${EGOR_Z_SCORE}, целевая ошибка = ${(EGOR_DESIRED_ERROR * 100).toFixed(0)}%`
+    );
+
+    const rowsContainer = fragment.querySelector('[data-role="rows"]');
+    if (!rowsContainer) {
+        return `<div class="error">Не найден контейнер строк для аналитики Егора.</div>`;
+    }
+
+    dataset.statsRows.forEach(row => {
+        rowsContainer.appendChild(createEgorStatsRow(row));
+    });
+
+    return fragment;
+}
+
+function getEgorAnalysisDataset() {
+    const period = calculateDataPeriod();
+    const groupedByCampaign = groupRowsByCampaign(currentData);
+    const statsRows = [];
+
+    groupedByCampaign.forEach((rows, campaignId) => {
+        const scores = extractValidScores(rows);
+        if (scores.length === 0) return;
+        statsRows.push({
+            label: String(campaignId),
+            ...calculateEgorStats(scores)
+        });
+    });
+
+    const allScores = extractValidScores(currentData);
+    if (allScores.length === 0) {
+        return null;
+    }
+
+    statsRows.push({
+        label: 'ALL',
+        ...calculateEgorStats(allScores)
+    });
+
+    statsRows.sort((a, b) => b.responsesGiven - a.responsesGiven);
+
+    return {
+        project: selectedProject || '—',
+        domain: selectedDomain || '—',
+        periodDisplay: period ? `с ${period.min} по ${period.max}` : '—',
+        statsRows
+    };
+}
+
+function downloadEgorAnalysisCsv() {
+    const dataset = getEgorAnalysisDataset();
+
+    if (!dataset) {
+        alert('Нет валидных данных для скачивания аналитики Егора');
+        return;
+    }
+
+    const csvRows = [
+        ['Параметр', 'Значение'],
+        ['Проект', dataset.project],
+        ['Домен', dataset.domain],
+        ['Данные за период', dataset.periodDisplay],
+        [],
+        ['Campaign ID', 'Среднее', 'Мода', 'Ст. отклонение', 'NPS, %', 'CI нижняя, %', 'CI верхняя, %', 'Ошибка, %', 'Точность', 'Ответов дано', 'Ответов надо', 'Осталось ответов']
+    ];
+
+    dataset.statsRows.forEach(row => {
+        csvRows.push([
+            row.label,
+            formatEgorNumber(row.mean),
+            formatEgorNumber(row.mode, 0),
+            formatEgorNumber(row.stdDev),
+            formatEgorPercent(row.nps),
+            formatEgorPercent(row.ciLower),
+            formatEgorPercent(row.ciUpper),
+            formatEgorPercent(row.error),
+            row.precisionOk ? 'Да' : 'Нет',
+            row.responsesGiven,
+            row.responsesRequired,
+            row.responsesRemaining
+        ]);
+    });
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    downloadCsvRows(csvRows, `egor_analysis_${sanitizeFilenamePart(dataset.project)}_${dateStr}.csv`);
+}
+
+function createEgorStatsRow(row) {
+    const fragment = cloneTemplate('egorAnalysisRowTemplate');
+    const rowElement = fragment ? fragment.querySelector('tr') : null;
+
+    if (!rowElement) {
+        throw new Error('Не найден HTML-шаблон строки аналитики Егора.');
+    }
+
+    if (row.label === 'ALL') {
+        rowElement.classList.add('egor-total-row');
+    }
+
+    setTemplateText(rowElement, 'label', row.label);
+    setTemplateText(rowElement, 'mean', formatEgorNumber(row.mean));
+    setTemplateText(rowElement, 'mode', formatEgorNumber(row.mode, 0));
+    setTemplateText(rowElement, 'stdDev', formatEgorNumber(row.stdDev));
+    setTemplateText(rowElement, 'nps', formatEgorPercent(row.nps));
+    setTemplateText(rowElement, 'ciLower', formatEgorPercent(row.ciLower));
+    setTemplateText(rowElement, 'ciUpper', formatEgorPercent(row.ciUpper));
+    setTemplateText(rowElement, 'error', formatEgorPercent(row.error));
+    setTemplateText(rowElement, 'precisionOk', row.precisionOk ? 'Да' : 'Нет');
+    setTemplateText(rowElement, 'responsesGiven', String(row.responsesGiven));
+    setTemplateText(rowElement, 'responsesRequired', String(row.responsesRequired));
+    setTemplateText(rowElement, 'responsesRemaining', String(row.responsesRemaining));
+
+    return rowElement;
+}
+
+function cloneTemplate(templateId) {
+    const template = document.getElementById(templateId);
+    return template ? template.content.cloneNode(true) : null;
+}
+
+function setTemplateText(root, role, value) {
+    const element = root.querySelector(`[data-role="${role}"]`);
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+function downloadCsvRows(rows, filename) {
+    const csvContent = rows
+        .map(row => row.map(escapeCsvValue).join(','))
+        .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function escapeCsvValue(value) {
+    if (value === null || value === undefined) return '';
+
+    const stringValue = String(value);
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+
+    return stringValue;
+}
+
+function sanitizeFilenamePart(value) {
+    return String(value || 'report')
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function groupRowsByCampaign(rows) {
+    const grouped = new Map();
+
+    rows.forEach(row => {
+        const campaignId = row.campaign_id || '—';
+        if (!grouped.has(campaignId)) {
+            grouped.set(campaignId, []);
+        }
+        grouped.get(campaignId).push(row);
+    });
+
+    return grouped;
+}
+
+function extractValidScores(rows) {
+    return rows
+        .map(row => (typeof row.score === 'number' ? row.score : Number(row.score)))
+        .filter(score => Number.isFinite(score));
+}
+
+function calculateEgorStats(scores) {
+    const n = scores.length;
+    const promoters = scores.filter(score => score >= 9).length;
+    const detractors = scores.filter(score => score <= 6).length;
+    const pProm = promoters / n;
+    const pDet = detractors / n;
+    const variance = pProm * (1 - pProm) + pDet * (1 - pDet) + 2 * pProm * pDet;
+    const se = Math.sqrt(variance / n);
+    const nps = (promoters - detractors) / n;
+    const ciLower = Math.max(-1, nps - EGOR_Z_SCORE * se);
+    const ciUpper = Math.min(1, nps + EGOR_Z_SCORE * se);
+    const currentError = (ciUpper - ciLower) / 2;
+    const requiredSampleSize = variance === 0 ? n : Math.ceil(variance / ((EGOR_DESIRED_ERROR / EGOR_Z_SCORE) ** 2));
+
+    return {
+        mean: calculateMean(scores),
+        mode: calculateMode(scores),
+        stdDev: calculateSampleStdDev(scores),
+        nps,
+        ciLower,
+        ciUpper,
+        error: currentError,
+        precisionOk: currentError <= EGOR_DESIRED_ERROR,
+        responsesGiven: n,
+        responsesRequired: requiredSampleSize,
+        responsesRemaining: Math.max(0, requiredSampleSize - n)
+    };
+}
+
+function calculateMean(scores) {
+    if (scores.length === 0) return null;
+    return scores.reduce((sum, score) => sum + score, 0) / scores.length;
+}
+
+function calculateMode(scores) {
+    if (scores.length === 0) return null;
+
+    const counts = new Map();
+    scores.forEach(score => {
+        counts.set(score, (counts.get(score) || 0) + 1);
+    });
+
+    let mode = null;
+    let maxCount = -1;
+
+    counts.forEach((count, score) => {
+        if (count > maxCount || (count === maxCount && score < mode)) {
+            maxCount = count;
+            mode = score;
+        }
+    });
+
+    return mode;
+}
+
+function calculateSampleStdDev(scores) {
+    if (scores.length < 2) return null;
+
+    const mean = calculateMean(scores);
+    const squaredDiffSum = scores.reduce((sum, score) => sum + ((score - mean) ** 2), 0);
+
+    return Math.sqrt(squaredDiffSum / (scores.length - 1));
+}
+
+function formatEgorNumber(value, digits = 2) {
+    if (value === null || value === undefined || Number.isNaN(value)) return '—';
+    return Number(value).toFixed(digits);
+}
+
+function formatEgorPercent(value) {
+    if (value === null || value === undefined || Number.isNaN(value)) return '—';
+    return `${(Number(value) * 100).toFixed(2)}%`;
 }
 
 function metricHtml(label, value) {
@@ -1065,12 +1387,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Modal events
     const analyzeBtn = document.getElementById('analyzeBtn');
     const analysisCloseBtn = document.getElementById('analysisCloseBtn');
-    const analysisOkBtn = document.getElementById('analysisOkBtn');
+    const analysisDownloadBtn = document.getElementById('analysisDownloadBtn');
     const analysisOverlay = document.getElementById('analysisModal');
 
     if (analyzeBtn) analyzeBtn.addEventListener('click', openAnalysisModal);
     if (analysisCloseBtn) analysisCloseBtn.addEventListener('click', closeAnalysisModal);
-    if (analysisOkBtn) analysisOkBtn.addEventListener('click', closeAnalysisModal);
+    if (analysisDownloadBtn) {
+        analysisDownloadBtn.addEventListener('click', function() {
+            if (typeof currentAnalysisDownloadAction === 'function') {
+                currentAnalysisDownloadAction();
+            }
+        });
+    }
     if (analysisOverlay) analysisOverlay.addEventListener('click', function(e) {
         if (e.target === analysisOverlay) closeAnalysisModal();
     });
