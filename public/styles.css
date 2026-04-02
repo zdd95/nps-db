@@ -101,6 +101,16 @@ button:hover {
     background-color: #757e86;
     cursor: not-allowed;
 }
+#analyzeEgorBtn {
+    background-color: #475569;
+}
+#analyzeEgorBtn:hover {
+    background-color: #334155;
+}
+#analyzeEgorBtn:disabled {
+    background-color: #757e86;
+    cursor: not-allowed;
+}
 button:disabled {
     background-color: #757e86;
     cursor: not-allowed;
@@ -490,6 +500,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     justify-content: flex-end;
     gap: 8px;
 }
+.modal-footer.hidden {
+    display: none;
+}
 .modal-action {
     background-color: #f9f9f9;
     color: rgb(0, 0, 0);
@@ -502,6 +515,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     transition: background-color 0.2s;
 }
 .modal-action:hover { background-color: #e3e3e3; }
+#analysisDownloadBtn {
+    background-color: #1dc981;
+    color: #ffffff;
+    border: none;
+}
+#analysisDownloadBtn:hover {
+    background-color: #128e5a;
+}
+#analysisDownloadBtn:disabled {
+    background-color: #757e86;
+    cursor: not-allowed;
+}
 
 /* Analysis content */
 .analysis-section {
@@ -547,6 +572,27 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     color: #7a4b00;
 }
 .formula { margin-top: 8px; color: #666; font-size: 13px; }
+.analysis-source-note {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #444;
+}
+.analysis-source-note a {
+    color: #0b57d0;
+    text-decoration: none;
+}
+.analysis-source-note a:hover {
+    text-decoration: underline;
+}
+.analysis-notes-list {
+    margin: 10px 0 0 18px;
+    padding: 0;
+    color: #444;
+    font-size: 14px;
+}
+.analysis-notes-list li {
+    margin-bottom: 6px;
+}
 
 /* Top comments */
 .top-comments {
@@ -579,3 +625,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     word-break: break-word;
 }
 .muted { color: #777; font-size: 13px; }
+.egor-table-wrap {
+    margin-top: 16px;
+    overflow-x: auto;
+}
+.egor-stats-table th,
+.egor-stats-table td {
+    white-space: nowrap;
+}
+.egor-total-row td {
+    font-weight: 700;
+    background-color: #fff7dc;
+}

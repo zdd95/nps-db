@@ -110,6 +110,7 @@
             <button onclick="loadData()">Загрузить данные с БД</button>
             <button onclick="downloadCSV()" id="downloadBtn" disabled>Скачать CSV</button>
             <button onclick="openAnalysisModal()" id="analyzeBtn" disabled>Анализ данных</button>
+            <button onclick="openEgorAnalysisModal()" id="analyzeEgorBtn" disabled>Анализ данных (Скрипт Егора)</button>
         </div>
         
         <div id="message"></div>
@@ -137,12 +138,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
-    <div class="scroll-fab">
-        <button id="scrollUpBtn" class="fab-btn" title="Наверх">▲</button>
-        <button id="scrollDownBtn" class="fab-btn" title="Вниз">▼</button>
-    </div>
-
     <!-- Analysis Modal -->
     <div id="analysisModal" class="modal-overlay" style="display: none;">
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="analysisTitle">
@@ -151,10 +146,86 @@
                 <button class="modal-close" id="analysisCloseBtn" aria-label="Закрыть">✕</button>
             </div>
             <div class="modal-body" id="analysisBody"></div>
-            <div class="modal-footer">
-                <button class="modal-action" id="analysisOkBtn">Закрыть</button>
+            <div class="modal-footer hidden" id="analysisFooter">
+                <button class="modal-action" id="analysisDownloadBtn" type="button">Скачать CSV</button>
             </div>
         </div>
+    </div>
+
+    <template id="egorAnalysisTemplate">
+        <div class="analysis-header">
+            <div class="analysis-title"><strong>Проект:</strong> <span data-role="project"></span></div>
+            <div class="analysis-title"><strong>Домен:</strong> <span data-role="domain"></span></div>
+            <div class="analysis-title"><strong>Данные за период:</strong> <span data-role="period"></span></div>
+        </div>
+        <div class="summary-box">
+            <div class="summary-title"><strong>Пояснение</strong></div>
+            <div class="muted">
+                Расчет адаптирован под данные сервиса и выполняется по <strong>campaign_id</strong>, так как API не возвращает поле <strong>site</strong> из исходного расчета в Google Colab.
+            </div>
+            <div class="analysis-source-note">
+                За основу расчета был взят скрипт из Google Colab:
+                <a
+                    href="https://colab.research.google.com/drive/188ZOx09HFZUgqLGaQsOVRvovlhuscQWx?usp=sharing#scrollTo=pPSYLk7VmmIN"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    открыть Colab
+                </a>
+            </div>
+            <div class="formula" data-role="formula"></div>
+            <ul class="analysis-notes-list">
+                <li><strong>Promoters</strong> — это оценки 9-10.</li>
+                <li><strong>Detractors</strong> — это оценки 0-6.</li>
+                <li><strong>SE</strong> — стандартная ошибка, показывает статистическую неопределенность результата.</li>
+                <li><strong>Z</strong> — коэффициент доверительного интервала; в этом отчете используется значение 1.96, что соответствует доверительной вероятности около 95%.</li>
+                <li><strong>Целевая ошибка</strong> — это допустимая погрешность результата; в текущем расчете она задана как 5%.</li>
+            </ul>
+        </div>
+        <div class="egor-table-wrap">
+            <table class="egor-stats-table">
+                <thead>
+                    <tr>
+                        <th>Campaign ID</th>
+                        <th>Среднее</th>
+                        <th>Мода</th>
+                        <th>Ст. отклонение</th>
+                        <th>NPS, %</th>
+                        <th>CI нижняя, %</th>
+                        <th>CI верхняя, %</th>
+                        <th>Ошибка, %</th>
+                        <th>Точность</th>
+                        <th>Ответов дано</th>
+                        <th>Ответов надо</th>
+                        <th>Осталось ответов</th>
+                    </tr>
+                </thead>
+                <tbody data-role="rows"></tbody>
+            </table>
+        </div>
+    </template>
+
+    <template id="egorAnalysisRowTemplate">
+        <tr>
+            <td data-role="label"></td>
+            <td data-role="mean"></td>
+            <td data-role="mode"></td>
+            <td data-role="stdDev"></td>
+            <td data-role="nps"></td>
+            <td data-role="ciLower"></td>
+            <td data-role="ciUpper"></td>
+            <td data-role="error"></td>
+            <td data-role="precisionOk"></td>
+            <td data-role="responsesGiven"></td>
+            <td data-role="responsesRequired"></td>
+            <td data-role="responsesRemaining"></td>
+        </tr>
+    </template>
+
+    <script src="script.js"></script>
+    <div class="scroll-fab">
+        <button id="scrollUpBtn" class="fab-btn" title="Наверх">▲</button>
+        <button id="scrollDownBtn" class="fab-btn" title="Вниз">▼</button>
     </div>
 </body>
 </html>
