@@ -8,7 +8,7 @@ let pageSize = 25;
 let lastSortedData = [];
 const EGOR_DESIRED_ERROR = 0.05;
 const EGOR_Z_SCORE = 1.96;
-let currentAnalysisDownloadAction = null;
+let currentAnalysisDownloadActions = null;
 
 // Данные для фильтров
 let domains = [];
@@ -19,11 +19,9 @@ let selectedCampaigns = new Set();
 function setDataActionButtonsDisabled(isDisabled) {
     const downloadBtn = document.getElementById('downloadBtn');
     const analyzeBtn = document.getElementById('analyzeBtn');
-    const analyzeEgorBtn = document.getElementById('analyzeEgorBtn');
 
     if (downloadBtn) downloadBtn.disabled = isDisabled;
     if (analyzeBtn) analyzeBtn.disabled = isDisabled;
-    if (analyzeEgorBtn) analyzeEgorBtn.disabled = isDisabled;
 }
 
 function setTodayDateRange() {
@@ -824,15 +822,14 @@ function downloadCSV() {
 
 // ===== Analysis Modal =====
 function openAnalysisModal() {
-    openAnalysisModalWithBuilder('Отчет анализа данных', buildAnalysisReportHtml);
-}
-
-function openEgorAnalysisModal() {
     openAnalysisModalWithBuilder(
-        'Отчет анализа данных (Скрипт Егора)',
-        buildEgorAnalysisReportHtml,
+        'Отчет анализа данных',
+        buildAnalysisReportHtml,
         {
-            downloadAction: downloadEgorAnalysisCsv
+            downloadActions: {
+                csv: downloadCombinedAnalysisCsv,
+                excel: downloadCombinedAnalysisExcel
+            }
         }
     );
 }
@@ -847,18 +844,26 @@ function openAnalysisModalWithBuilder(title, builder, options = {}) {
     const modalTitle = document.getElementById('analysisTitle');
     const body = document.getElementById('analysisBody');
     const footer = document.getElementById('analysisFooter');
-    const downloadBtn = document.getElementById('analysisDownloadBtn');
+    const downloadCsvBtn = document.getElementById('analysisDownloadBtn');
+    const downloadExcelBtn = document.getElementById('analysisDownloadExcelBtn');
 
     if (modalTitle) {
         modalTitle.textContent = title;
     }
 
-    currentAnalysisDownloadAction = typeof options.downloadAction === 'function' ? options.downloadAction : null;
+    currentAnalysisDownloadActions = options.downloadActions || null;
+    const hasDownloadActions = Boolean(
+        currentAnalysisDownloadActions
+        && (typeof currentAnalysisDownloadActions.csv === 'function' || typeof currentAnalysisDownloadActions.excel === 'function')
+    );
     if (footer) {
-        footer.classList.toggle('hidden', !currentAnalysisDownloadAction);
+        footer.classList.toggle('hidden', !hasDownloadActions);
     }
-    if (downloadBtn) {
-        downloadBtn.disabled = !currentAnalysisDownloadAction;
+    if (downloadCsvBtn) {
+        downloadCsvBtn.disabled = !(currentAnalysisDownloadActions && typeof currentAnalysisDownloadActions.csv === 'function');
+    }
+    if (downloadExcelBtn) {
+        downloadExcelBtn.disabled = !(currentAnalysisDownloadActions && typeof currentAnalysisDownloadActions.excel === 'function');
     }
 
     try {
@@ -884,7 +889,7 @@ function closeAnalysisModal() {
     const body = document.getElementById('analysisBody');
 
     overlay.style.display = 'none';
-    currentAnalysisDownloadAction = null;
+    currentAnalysisDownloadActions = null;
 
     if (footer) {
         footer.classList.add('hidden');
@@ -895,130 +900,160 @@ function closeAnalysisModal() {
 }
 
 function buildAnalysisReportHtml() {
-    const domainName = selectedDomain || '—';
-    const byCampaign = new Map();
-    let totalScores = [];
-    const npsCountersProject = { promoter: 0, passiv: 0, critic: 0 };
-
-    currentData.forEach(row => {
-        const campaignId = row.campaign_id;
-        const score = typeof row.score === 'number' ? row.score : (row.score ? Number(row.score) : null);
-        if (!byCampaign.has(campaignId)) byCampaign.set(campaignId, []);
-        byCampaign.get(campaignId).push(row);
-        if (score !== null && !Number.isNaN(score)) {
-            totalScores.push(score);
-            const type = classifyNps(score);
-            npsCountersProject[type] += 1;
-        }
-    });
-
-    // Вычисляем период данных (минимальная и максимальная дата по created_at)
-    let periodDisplay = '—';
-    const period = calculateDataPeriod();
-    if (period) {
-        periodDisplay = `с ${period.min} по ${period.max}`;
-    }
-
-    let html = '';
-    html += `<div class="analysis-header">`
-          + `<div class="analysis-title"><strong>Проект:</strong> ${escapeHtml(selectedProject || '—')}</div>`
-          + `<div class="analysis-title"><strong>Домен:</strong> ${escapeHtml(domainName)}</div>`
-          + `<div class="analysis-title"><strong>Данные за период:</strong> ${escapeHtml(periodDisplay)}</div>`
-          + `</div>`;
-
-    byCampaign.forEach((rows, campaignId) => {
-        const scores = rows.map(r => typeof r.score === 'number' ? r.score : (r.score ? Number(r.score) : null)).filter(s => s !== null && !Number.isNaN(s));
-        const avg = scores.length ? (scores.reduce((a,b)=>a+b,0) / scores.length) : null;
-        const npsCounters = { promoter: 0, passiv: 0, critic: 0 };
-        scores.forEach(s => { npsCounters[classifyNps(s)] += 1; });
-        const npsScore = calcNpsFromCounters(npsCounters);
-
-        html += '<div class="campaign-card">';
-        html += `<div class="campaign-card__header">Кампания <span class="badge">${escapeHtml(String(campaignId))}</span></div>`;
-        html += '<div class="kpi-grid">';
-        html += metricHtml('Средний score', avg !== null ? avg.toFixed(2) : '—');
-        html += metricHtml('promoter (9-10)', String(npsCounters.promoter));
-        html += metricHtml('passiv (7-8)', String(npsCounters.passiv));
-        html += metricHtml('critic (0-6)', String(npsCounters.critic));
-        html += metricHtml('NPS, %', `${npsScore.toFixed(2)}%`);
-        html += '</div>';
-        html += '</div>';
-    });
-
-    const projectAvg = totalScores.length ? (totalScores.reduce((a,b)=>a+b,0) / totalScores.length) : null;
-    const projectNps = calcNpsFromCounters(npsCountersProject);
-    if (byCampaign.size > 1) {
-        html += `<div class="summary-box">`
-             + `<div class="summary-title"><strong>Сводка по проекту</strong></div>`
-             + `<div class="kpi-grid">`
-             + metricHtml('Средний score по проекту', projectAvg !== null ? projectAvg.toFixed(2) : '—')
-             + metricHtml('Всего promoter', String(npsCountersProject.promoter))
-             + metricHtml('Всего passiv', String(npsCountersProject.passiv))
-             + metricHtml('Всего critic', String(npsCountersProject.critic))
-             + metricHtml('NPS проекта, %', `${projectNps.toFixed(2)}%`)
-             + `</div>`
-             + `<div class="formula">Формула NPS: ((promoter − critic) / (promoter + passiv + critic)) × 100%</div>`
-             + `</div>`;
-    } else {
-        // Только формула, если выбрана одна кампания
-        html += `<div class="formula">Формула NPS: ((promoter − critic) / (promoter + passiv + critic)) × 100%</div>`;
-    }
-
-    // ТОП-5 полезных комментариев по кампаниям (для любого количества кампаний)
-    const topComments = selectTopComments(currentData, 5);
-    if (topComments.length > 0) {
-        html += `<div class="top-comments">`
-             + `<h3 class="top-comments__title">ТОП‑5 комментариев</h3>`
-             + `<table class="comments-table">`
-             + `<thead><tr>`
-             + `<th>Кампания</th><th>Категория</th><th>Score</th><th>Email</th><th>Комментарий</th>`
-             + `</tr></thead><tbody>`;
-        topComments.forEach(c => {
-            html += `<tr>`
-                 + `<td>${escapeHtml(String(c.campaign_id || ''))}</td>`
-                 + `<td>${escapeHtml(c.category || '')}</td>`
-                 + `<td>${escapeHtml(c.score !== null && c.score !== undefined ? String(c.score) : '')}</td>`
-                 + `<td>${escapeHtml(c.email || '')}</td>`
-                 + `<td class="comment-text">${escapeHtml(c.text || '')}</td>`
-                 + `</tr>`;
-        });
-        html += `</tbody></table></div>`;
-    }
-
-    return html;
-}
-
-function buildEgorAnalysisReportHtml() {
-    const dataset = getEgorAnalysisDataset();
-    if (!dataset) {
-        return `<div class="error">Нет валидных значений score для расчета статистики.</div>`;
-    }
-
-    const fragment = cloneTemplate('egorAnalysisTemplate');
+    const defaultDataset = getDefaultAnalysisDataset();
+    const egorDataset = getEgorAnalysisDataset();
+    const fragment = cloneTemplate('combinedAnalysisTemplate');
 
     if (!fragment) {
-        return `<div class="error">Не найден HTML-шаблон отчета для аналитики Егора.</div>`;
+        return `<div class="error">Не найден HTML-шаблон объединенного отчета.</div>`;
     }
 
-    setTemplateText(fragment, 'project', dataset.project);
-    setTemplateText(fragment, 'domain', dataset.domain);
-    setTemplateText(fragment, 'period', dataset.periodDisplay);
+    setTemplateText(fragment, 'project', defaultDataset.project);
+    setTemplateText(fragment, 'domain', defaultDataset.domain);
+    setTemplateText(fragment, 'period', defaultDataset.periodDisplay);
+    setTemplateText(fragment, 'defaultFormula', 'Формула NPS: ((promoter − critic) / (promoter + passiv + critic)) × 100%');
     setTemplateText(
         fragment,
-        'formula',
+        'egorFormula',
         `Формулы: NPS = (promoters − detractors) / n, ошибка = Z × SE, Z = ${EGOR_Z_SCORE}, целевая ошибка = ${(EGOR_DESIRED_ERROR * 100).toFixed(0)}%`
     );
 
-    const rowsContainer = fragment.querySelector('[data-role="rows"]');
-    if (!rowsContainer) {
-        return `<div class="error">Не найден контейнер строк для аналитики Егора.</div>`;
+    const metricsRows = fragment.querySelector('[data-role="metricsRows"]');
+    if (!metricsRows) {
+        return `<div class="error">Не найден контейнер строк общей сводки.</div>`;
     }
 
-    dataset.statsRows.forEach(row => {
-        rowsContainer.appendChild(createEgorStatsRow(row));
+    defaultDataset.metricsRows.forEach(row => {
+        metricsRows.appendChild(createDefaultAnalysisMetricsRow(row));
     });
 
+    const egorRows = fragment.querySelector('[data-role="egorRows"]');
+    if (!egorRows) {
+        return `<div class="error">Не найден контейнер строк статистической значимости.</div>`;
+    }
+
+    if (!egorDataset) {
+        return `<div class="error">Нет валидных значений score для расчета статистической значимости.</div>`;
+    }
+
+    egorDataset.statsRows.forEach(row => {
+        egorRows.appendChild(createEgorStatsRow(row));
+    });
+
+    const commentsSection = fragment.querySelector('[data-role="commentsSection"]');
+    const commentsRows = fragment.querySelector('[data-role="commentsRows"]');
+
+    if (!commentsSection || !commentsRows) {
+        return `<div class="error">Не найден блок комментариев для основной аналитики.</div>`;
+    }
+
+    if (defaultDataset.topComments.length === 0) {
+        commentsSection.remove();
+    } else {
+        defaultDataset.topComments.forEach(comment => {
+            commentsRows.appendChild(createDefaultAnalysisCommentRow(comment));
+        });
+    }
+
     return fragment;
+}
+
+function getDefaultAnalysisDataset() {
+    const period = calculateDataPeriod();
+    const groupedByCampaign = groupRowsByCampaign(currentData);
+    const metricsRows = [];
+    let totalScores = [];
+    const projectCounters = { promoter: 0, passiv: 0, critic: 0 };
+
+    groupedByCampaign.forEach((rows, campaignId) => {
+        const scores = extractValidScores(rows);
+        const counters = { promoter: 0, passiv: 0, critic: 0 };
+
+        scores.forEach(score => {
+            counters[classifyNps(score)] += 1;
+            projectCounters[classifyNps(score)] += 1;
+        });
+
+        totalScores = totalScores.concat(scores);
+
+        metricsRows.push({
+            label: String(campaignId),
+            responses: scores.length,
+            averageScore: scores.length ? calculateMean(scores) : null,
+            promoter: counters.promoter,
+            passiv: counters.passiv,
+            critic: counters.critic,
+            nps: calcNpsFromCounters(counters),
+            isTotal: false
+        });
+    });
+
+    metricsRows.sort((a, b) => a.label.localeCompare(b.label, 'ru'));
+
+    if (groupedByCampaign.size > 1) {
+        metricsRows.push({
+            label: 'Итого по проекту',
+            responses: totalScores.length,
+            averageScore: totalScores.length ? calculateMean(totalScores) : null,
+            promoter: projectCounters.promoter,
+            passiv: projectCounters.passiv,
+            critic: projectCounters.critic,
+            nps: calcNpsFromCounters(projectCounters),
+            isTotal: true
+        });
+    }
+
+    return {
+        project: selectedProject || '—',
+        domain: selectedDomain || '—',
+        periodDisplay: period ? `с ${period.min} по ${period.max}` : '—',
+        metricsRows,
+        topComments: selectTopComments(currentData, 5)
+    };
+}
+
+function createDefaultAnalysisMetricsRow(row) {
+    const fragment = cloneTemplate('defaultAnalysisMetricsRowTemplate');
+    const rowElement = fragment ? fragment.querySelector('tr') : null;
+
+    if (!rowElement) {
+        throw new Error('Не найден HTML-шаблон строки основной аналитики.');
+    }
+
+    if (row.isTotal) {
+        rowElement.classList.add('analysis-total-row');
+    }
+
+    setTemplateText(rowElement, 'label', row.label);
+    setTemplateText(rowElement, 'responses', String(row.responses));
+    setTemplateText(rowElement, 'averageScore', row.averageScore !== null ? row.averageScore.toFixed(2) : '—');
+    setTemplateText(rowElement, 'promoter', String(row.promoter));
+    setTemplateText(rowElement, 'passiv', String(row.passiv));
+    setTemplateText(rowElement, 'critic', String(row.critic));
+    setTemplateText(rowElement, 'nps', `${row.nps.toFixed(2)}%`);
+
+    return rowElement;
+}
+
+function createDefaultAnalysisCommentRow(comment) {
+    const fragment = cloneTemplate('defaultAnalysisCommentRowTemplate');
+    const rowElement = fragment ? fragment.querySelector('tr') : null;
+
+    if (!rowElement) {
+        throw new Error('Не найден HTML-шаблон строки комментария основной аналитики.');
+    }
+
+    setTemplateText(rowElement, 'campaignId', String(comment.campaign_id || ''));
+    setTemplateText(rowElement, 'category', comment.category || '');
+    setTemplateText(
+        rowElement,
+        'score',
+        comment.score !== null && comment.score !== undefined ? String(comment.score) : ''
+    );
+    setTemplateText(rowElement, 'email', comment.email || '');
+    setTemplateText(rowElement, 'text', comment.text || '');
+
+    return rowElement;
 }
 
 function getEgorAnalysisDataset() {
@@ -1035,17 +1070,19 @@ function getEgorAnalysisDataset() {
         });
     });
 
+    statsRows.sort((a, b) => a.label.localeCompare(b.label, 'ru'));
+
     const allScores = extractValidScores(currentData);
     if (allScores.length === 0) {
         return null;
     }
 
-    statsRows.push({
-        label: 'ALL',
-        ...calculateEgorStats(allScores)
-    });
-
-    statsRows.sort((a, b) => b.responsesGiven - a.responsesGiven);
+    if (groupedByCampaign.size > 1) {
+        statsRows.push({
+            label: 'Итого по проекту',
+            ...calculateEgorStats(allScores)
+        });
+    }
 
     return {
         project: selectedProject || '—',
@@ -1055,24 +1092,44 @@ function getEgorAnalysisDataset() {
     };
 }
 
-function downloadEgorAnalysisCsv() {
-    const dataset = getEgorAnalysisDataset();
+function downloadCombinedAnalysisCsv() {
+    const defaultDataset = getDefaultAnalysisDataset();
+    const egorDataset = getEgorAnalysisDataset();
 
-    if (!dataset) {
-        alert('Нет валидных данных для скачивания аналитики Егора');
+    if (!egorDataset) {
+        alert('Нет валидных данных для скачивания анализа');
         return;
     }
 
     const csvRows = [
         ['Параметр', 'Значение'],
-        ['Проект', dataset.project],
-        ['Домен', dataset.domain],
-        ['Данные за период', dataset.periodDisplay],
+        ['Проект', defaultDataset.project],
+        ['Домен', defaultDataset.domain],
+        ['Данные за период', defaultDataset.periodDisplay],
         [],
-        ['Campaign ID', 'Среднее', 'Мода', 'Ст. отклонение', 'NPS, %', 'CI нижняя, %', 'CI верхняя, %', 'Ошибка, %', 'Точность', 'Ответов дано', 'Ответов надо', 'Осталось ответов']
+        ['Общая сводка'],
+        ['Кампания', 'Ответов', 'promoter (9-10)', 'passiv (7-8)', 'critic (0-6)', 'Score (ср.)', 'NPS, %']
     ];
 
-    dataset.statsRows.forEach(row => {
+    defaultDataset.metricsRows.forEach(row => {
+        csvRows.push([
+            row.label,
+            row.responses,
+            row.promoter,
+            row.passiv,
+            row.critic,
+            row.averageScore !== null ? row.averageScore.toFixed(2) : '—',
+            `${row.nps.toFixed(2)}%`
+        ]);
+    });
+
+    csvRows.push(
+        [],
+        ['Стат. значимость'],
+        ['Кампания', 'Среднее', 'Мода', 'Ст. отклонение', 'NPS, %', 'CI нижняя, %', 'CI верхняя, %', 'Ошибка, %', 'Точность', 'Ответов дано', 'Ответов надо', 'Осталось ответов']
+    );
+
+    egorDataset.statsRows.forEach(row => {
         csvRows.push([
             row.label,
             formatEgorNumber(row.mean),
@@ -1090,7 +1147,112 @@ function downloadEgorAnalysisCsv() {
     });
 
     const dateStr = new Date().toISOString().split('T')[0];
-    downloadCsvRows(csvRows, `egor_analysis_${sanitizeFilenamePart(dataset.project)}_${dateStr}.csv`);
+    downloadCsvRows(csvRows, `analysis_${sanitizeFilenamePart(defaultDataset.project)}_${dateStr}.csv`);
+}
+
+function downloadCombinedAnalysisExcel() {
+    const defaultDataset = getDefaultAnalysisDataset();
+    const egorDataset = getEgorAnalysisDataset();
+
+    if (!egorDataset) {
+        alert('Нет валидных данных для скачивания анализа');
+        return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+        alert('Не удалось подготовить Excel-файл. Библиотека XLSX не загружена.');
+        return;
+    }
+
+    const workbook = buildCombinedAnalysisWorkbook(defaultDataset, egorDataset);
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(workbook, `analysis_${sanitizeFilenamePart(defaultDataset.project)}_${dateStr}.xlsx`, {
+        compression: true
+    });
+}
+
+function buildCombinedAnalysisWorkbook(defaultDataset, egorDataset) {
+    const workbook = XLSX.utils.book_new();
+    const metadataRows = [
+        ['Проект', defaultDataset.project],
+        ['Домен', defaultDataset.domain],
+        ['Данные за период', defaultDataset.periodDisplay]
+    ];
+    const summaryRows = [
+        ...metadataRows,
+        [],
+        ['Общая сводка'],
+        ['Кампания', 'Ответов', 'promoter (9-10)', 'passiv (7-8)', 'critic (0-6)', 'Score (ср.)', 'NPS, %'],
+        ...defaultDataset.metricsRows.map(row => ([
+            row.label,
+            row.responses,
+            row.promoter,
+            row.passiv,
+            row.critic,
+            row.averageScore !== null ? Number(row.averageScore.toFixed(2)) : '—',
+            `${row.nps.toFixed(2)}%`
+        ]))
+    ];
+    const significanceRows = [
+        ...metadataRows,
+        [],
+        ['Стат. значимость'],
+        ['Кампания', 'Среднее', 'Мода', 'Ст. отклонение', 'NPS, %', 'CI нижняя, %', 'CI верхняя, %', 'Ошибка, %', 'Точность', 'Ответов дано', 'Ответов надо', 'Осталось ответов'],
+        ...egorDataset.statsRows.map(row => ([
+            row.label,
+            formatEgorNumber(row.mean),
+            formatEgorNumber(row.mode, 0),
+            formatEgorNumber(row.stdDev),
+            formatEgorPercent(row.nps),
+            formatEgorPercent(row.ciLower),
+            formatEgorPercent(row.ciUpper),
+            formatEgorPercent(row.error),
+            row.precisionOk ? 'Да' : 'Нет',
+            row.responsesGiven,
+            row.responsesRequired,
+            row.responsesRemaining
+        ]))
+    ];
+
+    const summarySheet = buildAnalysisWorkbookSheet(summaryRows);
+    const significanceSheet = buildAnalysisWorkbookSheet(significanceRows);
+
+    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Общая сводка');
+    XLSX.utils.book_append_sheet(workbook, significanceSheet, 'Стат. значимость');
+
+    return workbook;
+}
+
+function buildAnalysisWorkbookSheet(rows) {
+    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    worksheet['!cols'] = calculateWorkbookColumnWidths(rows);
+    worksheet['!rows'] = rows.map((row, rowIndex) => {
+        if (rowIndex === 3) {
+            return { hpt: 18 };
+        }
+
+        return { hpt: 16 };
+    });
+    return worksheet;
+}
+
+function calculateWorkbookColumnWidths(rows) {
+    if (!rows || rows.length === 0) {
+        return [];
+    }
+
+    const columnCount = Math.max(...rows.map(row => row.length));
+
+    return Array.from({ length: columnCount }, (_, columnIndex) => {
+        const maxLength = rows.reduce((length, row) => {
+            const value = row[columnIndex] === undefined || row[columnIndex] === null ? '' : String(row[columnIndex]);
+            return Math.max(length, value.length);
+        }, 0);
+
+        return {
+            wch: Math.min(Math.max(maxLength + 2, 12), 36)
+        };
+    });
 }
 
 function createEgorStatsRow(row) {
@@ -1101,8 +1263,8 @@ function createEgorStatsRow(row) {
         throw new Error('Не найден HTML-шаблон строки аналитики Егора.');
     }
 
-    if (row.label === 'ALL') {
-        rowElement.classList.add('egor-total-row');
+    if (row.label === 'ALL' || row.label === 'Итого по проекту') {
+        rowElement.classList.add('analysis-total-row');
     }
 
     setTemplateText(rowElement, 'label', row.label);
@@ -1138,7 +1300,11 @@ function downloadCsvRows(rows, filename) {
         .map(row => row.map(escapeCsvValue).join(','))
         .join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    downloadTextFile(csvContent, filename, 'text/csv;charset=utf-8;');
+}
+
+function downloadTextFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
 
@@ -1264,10 +1430,6 @@ function formatEgorPercent(value) {
     return `${(Number(value) * 100).toFixed(2)}%`;
 }
 
-function metricHtml(label, value) {
-    return `<div class="kpi"><div class="kpi__label">${label}</div><div class="kpi__value">${value}</div></div>`;
-}
-
 function classifyNps(score) {
     if (score >= 9) return 'promoter';
     if (score >= 7) return 'passiv';
@@ -1388,14 +1550,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const analyzeBtn = document.getElementById('analyzeBtn');
     const analysisCloseBtn = document.getElementById('analysisCloseBtn');
     const analysisDownloadBtn = document.getElementById('analysisDownloadBtn');
+    const analysisDownloadExcelBtn = document.getElementById('analysisDownloadExcelBtn');
     const analysisOverlay = document.getElementById('analysisModal');
 
     if (analyzeBtn) analyzeBtn.addEventListener('click', openAnalysisModal);
     if (analysisCloseBtn) analysisCloseBtn.addEventListener('click', closeAnalysisModal);
     if (analysisDownloadBtn) {
         analysisDownloadBtn.addEventListener('click', function() {
-            if (typeof currentAnalysisDownloadAction === 'function') {
-                currentAnalysisDownloadAction();
+            if (currentAnalysisDownloadActions && typeof currentAnalysisDownloadActions.csv === 'function') {
+                currentAnalysisDownloadActions.csv();
+            }
+        });
+    }
+    if (analysisDownloadExcelBtn) {
+        analysisDownloadExcelBtn.addEventListener('click', function() {
+            if (currentAnalysisDownloadActions && typeof currentAnalysisDownloadActions.excel === 'function') {
+                currentAnalysisDownloadActions.excel();
             }
         });
     }

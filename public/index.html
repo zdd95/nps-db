@@ -110,7 +110,6 @@
             <button onclick="loadData()">Загрузить данные с БД</button>
             <button onclick="downloadCSV()" id="downloadBtn" disabled>Скачать CSV</button>
             <button onclick="openAnalysisModal()" id="analyzeBtn" disabled>Анализ данных</button>
-            <button onclick="openEgorAnalysisModal()" id="analyzeEgorBtn" disabled>Анализ данных (Скрипт Егора)</button>
         </div>
         
         <div id="message"></div>
@@ -148,59 +147,98 @@
             <div class="modal-body" id="analysisBody"></div>
             <div class="modal-footer hidden" id="analysisFooter">
                 <button class="modal-action" id="analysisDownloadBtn" type="button">Скачать CSV</button>
+                <button class="modal-action" id="analysisDownloadExcelBtn" type="button">Скачать XLSX</button>
             </div>
         </div>
     </div>
 
-    <template id="egorAnalysisTemplate">
+    <template id="combinedAnalysisTemplate">
         <div class="analysis-header">
             <div class="analysis-title"><strong>Проект:</strong> <span data-role="project"></span></div>
             <div class="analysis-title"><strong>Домен:</strong> <span data-role="domain"></span></div>
             <div class="analysis-title"><strong>Данные за период:</strong> <span data-role="period"></span></div>
         </div>
-        <div class="summary-box">
-            <div class="summary-title"><strong>Пояснение</strong></div>
-            <div class="muted">
-                Расчет адаптирован под данные сервиса и выполняется по <strong>campaign_id</strong>, так как API не возвращает поле <strong>site</strong> из исходного расчета в Google Colab.
+        <div class="analysis-section-block">
+            <h3 class="analysis-block-title">Общая сводка</h3>
+            <div class="analysis-table-wrap">
+                <table class="analysis-metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Кампания</th>
+                            <th>Ответов</th>
+                            <th>promoter (9-10)</th>
+                            <th>passiv (7-8)</th>
+                            <th>critic (0-6)</th>
+                            <th>Score (ср.)</th>
+                            <th>NPS, %</th>
+                        </tr>
+                    </thead>
+                    <tbody data-role="metricsRows"></tbody>
+                </table>
             </div>
-            <div class="analysis-source-note">
-                За основу расчета был взят скрипт из Google Colab:
-                <a
-                    href="https://colab.research.google.com/drive/188ZOx09HFZUgqLGaQsOVRvovlhuscQWx?usp=sharing#scrollTo=pPSYLk7VmmIN"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    открыть Colab
-                </a>
-            </div>
-            <div class="formula" data-role="formula"></div>
-            <ul class="analysis-notes-list">
-                <li><strong>Promoters</strong> — это оценки 9-10.</li>
-                <li><strong>Detractors</strong> — это оценки 0-6.</li>
-                <li><strong>SE</strong> — стандартная ошибка, показывает статистическую неопределенность результата.</li>
-                <li><strong>Z</strong> — коэффициент доверительного интервала; в этом отчете используется значение 1.96, что соответствует доверительной вероятности около 95%.</li>
-                <li><strong>Целевая ошибка</strong> — это допустимая погрешность результата; в текущем расчете она задана как 5%.</li>
-            </ul>
+            <div class="formula" data-role="defaultFormula"></div>
         </div>
-        <div class="egor-table-wrap">
-            <table class="egor-stats-table">
+        <div class="analysis-section-block">
+            <h3 class="analysis-block-title">Стат. значимость</h3>
+            <div class="analysis-table-wrap">
+                <table class="analysis-significance-table">
+                    <thead>
+                        <tr>
+                            <th>Кампания</th>
+                            <th>Среднее</th>
+                            <th>Мода</th>
+                            <th>Ст. отклонение</th>
+                            <th>NPS, %</th>
+                            <th>CI нижняя, %</th>
+                            <th>CI верхняя, %</th>
+                            <th>Ошибка, %</th>
+                            <th>Точность</th>
+                            <th>Ответов дано</th>
+                            <th>Ответов надо</th>
+                            <th>Осталось ответов</th>
+                        </tr>
+                    </thead>
+                    <tbody data-role="egorRows"></tbody>
+                </table>
+            </div>
+            <div class="summary-box">
+                <div class="summary-title"><strong>Пояснение к таблице «Стат. значимость»</strong></div>
+                <div class="muted">
+                    Расчет адаптирован под данные сервиса и выполняется по <strong>campaign_id</strong>, так как API не возвращает поле <strong>site</strong> из исходного расчета в Google Colab.
+                </div>
+                <div class="analysis-source-note">
+                    За основу расчета был взят скрипт из Google Colab:
+                    <a
+                        href="https://colab.research.google.com/drive/188ZOx09HFZUgqLGaQsOVRvovlhuscQWx?usp=sharing#scrollTo=pPSYLk7VmmIN"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        открыть Colab
+                    </a>
+                </div>
+                <div class="formula" data-role="egorFormula"></div>
+                <ul class="analysis-notes-list">
+                    <li><strong>Promoters</strong> — это оценки 9-10.</li>
+                    <li><strong>Detractors</strong> — это оценки 0-6.</li>
+                    <li><strong>SE</strong> — стандартная ошибка, показывает статистическую неопределенность результата.</li>
+                    <li><strong>Z</strong> — коэффициент доверительного интервала; в этом отчете используется значение 1.96, что соответствует доверительной вероятности около 95%.</li>
+                    <li><strong>Целевая ошибка</strong> — это допустимая погрешность результата; в текущем расчете она задана как 5%.</li>
+                </ul>
+            </div>
+        </div>
+        <div class="top-comments" data-role="commentsSection">
+            <h3 class="top-comments__title">ТОП‑5 комментариев</h3>
+            <table class="comments-table">
                 <thead>
                     <tr>
-                        <th>Campaign ID</th>
-                        <th>Среднее</th>
-                        <th>Мода</th>
-                        <th>Ст. отклонение</th>
-                        <th>NPS, %</th>
-                        <th>CI нижняя, %</th>
-                        <th>CI верхняя, %</th>
-                        <th>Ошибка, %</th>
-                        <th>Точность</th>
-                        <th>Ответов дано</th>
-                        <th>Ответов надо</th>
-                        <th>Осталось ответов</th>
+                        <th>Кампания</th>
+                        <th>Категория</th>
+                        <th>Score</th>
+                        <th>Email</th>
+                        <th>Комментарий</th>
                     </tr>
                 </thead>
-                <tbody data-role="rows"></tbody>
+                <tbody data-role="commentsRows"></tbody>
             </table>
         </div>
     </template>
@@ -222,6 +260,29 @@
         </tr>
     </template>
 
+    <template id="defaultAnalysisMetricsRowTemplate">
+        <tr>
+            <td data-role="label"></td>
+            <td data-role="responses"></td>
+            <td data-role="promoter"></td>
+            <td data-role="passiv"></td>
+            <td data-role="critic"></td>
+            <td data-role="averageScore"></td>
+            <td data-role="nps"></td>
+        </tr>
+    </template>
+
+    <template id="defaultAnalysisCommentRowTemplate">
+        <tr>
+            <td data-role="campaignId"></td>
+            <td data-role="category"></td>
+            <td data-role="score"></td>
+            <td data-role="email"></td>
+            <td class="comment-text" data-role="text"></td>
+        </tr>
+    </template>
+
+    <script src="vendor/xlsx.full.min.js"></script>
     <script src="script.js"></script>
     <div class="scroll-fab">
         <button id="scrollUpBtn" class="fab-btn" title="Наверх">▲</button>
