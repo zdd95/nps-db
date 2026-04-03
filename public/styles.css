@@ -101,16 +101,6 @@ button:hover {
     background-color: #757e86;
     cursor: not-allowed;
 }
-#analyzeEgorBtn {
-    background-color: #475569;
-}
-#analyzeEgorBtn:hover {
-    background-color: #334155;
-}
-#analyzeEgorBtn:disabled {
-    background-color: #757e86;
-    cursor: not-allowed;
-}
 button:disabled {
     background-color: #757e86;
     cursor: not-allowed;
@@ -527,6 +517,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     background-color: #757e86;
     cursor: not-allowed;
 }
+#analysisDownloadExcelBtn {
+    background-color: #007bff;
+    color: #ffffff;
+    border: none;
+}
+#analysisDownloadExcelBtn:hover {
+    background-color: #0056b3;
+}
+#analysisDownloadExcelBtn:disabled {
+    background-color: #757e86;
+    cursor: not-allowed;
+}
 
 /* Analysis content */
 .analysis-section {
@@ -542,29 +544,29 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     margin-bottom: 12px;
 }
 .analysis-title { font-size: 14px; }
-.analysis-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 18px;
+.analysis-section-block {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid #e6e6e6;
 }
-.kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(160px, 1fr));
-    gap: 12px 18px;
+.analysis-header + .analysis-section-block {
+    margin-top: 12px;
+    padding-top: 16px;
 }
-.kpi { padding: 8px 10px; border: 1px solid #eee; border-radius: 8px; background: #fff; }
-.kpi__label { font-size: 12px; color: #666; margin-bottom: 4px; }
-.kpi__value { font-size: 16px; font-weight: bold; color: #222; }
-.campaign-card { border: 1px solid #eaeaea; border-radius: 10px; padding: 12px; margin-bottom: 12px; background: #fcfcfc; }
-.campaign-card__header { font-weight: bold; margin-bottom: 10px; }
-.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eef5ff; color: #0b57d0; border: 1px solid #d6e7ff; font-size: 12px; }
+.analysis-block-title {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+}
 .summary-box {
-    margin-top: 16px;
+    margin: 16px 0;
     padding: 16px;
     border: 2px solid #ffd37a;
     border-radius: 12px;
     background: #fff9ec;
     box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    color: #444;
+    font-size: 14px;
+    line-height: 1.45;
 }
 .summary-title {
     margin-bottom: 12px;
@@ -593,10 +595,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .analysis-notes-list li {
     margin-bottom: 6px;
 }
+.summary-box .muted,
+.summary-box .formula,
+.summary-box .analysis-source-note,
+.summary-box .analysis-notes-list {
+    color: inherit;
+    font-size: inherit;
+}
 
 /* Top comments */
 .top-comments {
-    margin-top: 16px;
+    margin-top: 0;
+    padding-top: 18px;
+    border-top: 1px solid #e6e6e6;
 }
 .top-comments__title {
     margin: 0 0 10px 0;
@@ -625,15 +636,29 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     word-break: break-word;
 }
 .muted { color: #777; font-size: 13px; }
-.egor-table-wrap {
-    margin-top: 16px;
+.analysis-table-wrap {
+    margin-top: 0;
     overflow-x: auto;
 }
-.egor-stats-table th,
-.egor-stats-table td {
+.analysis-significance-table th,
+.analysis-significance-table td {
     white-space: nowrap;
 }
-.egor-total-row td {
+.analysis-metrics-table,
+.analysis-significance-table {
+    width: max-content;
+    min-width: 100%;
+    margin-top: 0;
+}
+.analysis-metrics-table th,
+.analysis-metrics-table td {
+    white-space: nowrap;
+}
+.analysis-metrics-table th:first-child,
+.analysis-metrics-table td:first-child {
+    min-width: 220px;
+}
+.analysis-total-row td {
     font-weight: 700;
     background-color: #fff7dc;
 }
