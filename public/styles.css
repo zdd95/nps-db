@@ -162,7 +162,7 @@ tr:nth-child(even) {
     font-size: 12px;
 }
 input[type="date"] {
-    width: 160px;
+    width: 120px;
     cursor: pointer;
 }
 /* Стили для календаря в браузерах WebKit (Chrome, Safari) */
@@ -199,7 +199,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     display: inline-block;
 }
 .dropdown-input {
-    width: 160px;
+    width: 220px;
     cursor: pointer;
     background-color: white;
     font-size: 16px;
@@ -210,6 +210,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     border: 1px solid #ddd;
     border-radius: 8px;
     padding: 12px 20px;
+}
+#domainFilter,
+#campaignFilter {
+    width: 160px;
 }
 .dropdown-list.show ~ .dropdown-input {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 4l4 4H2z'/%3E%3C/svg%3E");
