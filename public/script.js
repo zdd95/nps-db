@@ -16,6 +16,124 @@ let selectedDomain = null;
 let campaigns = [];
 let selectedCampaigns = new Set();
 
+// Сохранение выбранных фильтров между перезагрузками страницы
+const FILTERS_STORAGE_KEY = 'nps-filters';
+let pendingFiltersRestore = null;
+
+function readSavedFilters() {
+    try {
+        const raw = localStorage.getItem(FILTERS_STORAGE_KEY);
+        if (!raw) {
+            return null;
+        }
+
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') {
+            return null;
+        }
+
+        return parsed;
+    } catch (error) {
+        return null;
+    }
+}
+
+function saveFiltersState() {
+    try {
+        const dateFrom = document.getElementById('dateFromFilter');
+        const dateTo = document.getElementById('dateToFilter');
+
+        const state = {
+            project: selectedProject || '',
+            domain: selectedDomain || '',
+            campaigns: Array.from(selectedCampaigns),
+            dateFrom: dateFrom ? dateFrom.value : '',
+            dateTo: dateTo ? dateTo.value : ''
+        };
+
+        localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(state));
+    } catch (error) {
+        // localStorage может быть недоступен (приватный режим и т.п.) — не мешаем работе.
+    }
+}
+
+function isValidDateValue(value) {
+    return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function applySavedDateRange(saved) {
+    setTodayDateRange();
+
+    if (saved) {
+        const dateFrom = document.getElementById('dateFromFilter');
+        const dateTo = document.getElementById('dateToFilter');
+
+        if (dateFrom && isValidDateValue(saved.dateFrom)) {
+            dateFrom.value = saved.dateFrom;
+        }
+
+        if (dateTo && isValidDateValue(saved.dateTo)) {
+            dateTo.value = saved.dateTo;
+        }
+    }
+
+    // На случай старых/битых сохранённых данных
+    const dateFrom = document.getElementById('dateFromFilter');
+    const dateTo = document.getElementById('dateToFilter');
+    if (dateFrom && dateTo && dateFrom.value && dateTo.value && dateFrom.value > dateTo.value) {
+        dateTo.value = dateFrom.value;
+    }
+
+    syncDateRangeConstraints();
+}
+
+// Не даём выбрать «дата по» раньше «дата с» и наоборот:
+// ограничиваем min/max у полей и подправляем значения при ручном вводе.
+function syncDateRangeConstraints() {
+    const dateFrom = document.getElementById('dateFromFilter');
+    const dateTo = document.getElementById('dateToFilter');
+
+    if (!dateFrom || !dateTo) {
+        return;
+    }
+
+    if (dateTo.value) {
+        dateFrom.max = dateTo.value;
+    } else {
+        dateFrom.removeAttribute('max');
+    }
+
+    if (dateFrom.value) {
+        dateTo.min = dateFrom.value;
+    } else {
+        dateTo.removeAttribute('min');
+    }
+}
+
+function handleDateFromChange() {
+    const dateFrom = document.getElementById('dateFromFilter');
+    const dateTo = document.getElementById('dateToFilter');
+
+    if (dateFrom && dateTo && dateFrom.value && dateTo.value && dateFrom.value > dateTo.value) {
+        dateTo.value = dateFrom.value;
+    }
+
+    syncDateRangeConstraints();
+    saveFiltersState();
+}
+
+function handleDateToChange() {
+    const dateFrom = document.getElementById('dateFromFilter');
+    const dateTo = document.getElementById('dateToFilter');
+
+    if (dateFrom && dateTo && dateFrom.value && dateTo.value && dateTo.value < dateFrom.value) {
+        dateFrom.value = dateTo.value;
+    }
+
+    syncDateRangeConstraints();
+    saveFiltersState();
+}
+
 function setDataActionButtonsDisabled(isDisabled) {
     const downloadBtn = document.getElementById('downloadBtn');
     const analyzeBtn = document.getElementById('analyzeBtn');
@@ -79,18 +197,22 @@ function initializeProjectDropdown() {
         projectOptions.appendChild(option);
     });
     
-    // Выбираем проект по умолчанию - FONTANKA
-    const defaultProject = sortedProjectNames.find(name =>
+    // Выбираем сохранённый проект, иначе проект по умолчанию — FONTANKA
+    const saved = pendingFiltersRestore;
+    const savedProject = saved && saved.project && sortedProjectNames.includes(saved.project)
+        ? saved.project
+        : null;
+    const defaultProject = savedProject || sortedProjectNames.find(name =>
         name.toUpperCase() === 'FONTANKA'
     ) || sortedProjectNames[0];
-    
+
     if (defaultProject) {
-        selectProject(defaultProject);
+        selectProject(defaultProject, savedProject ? saved : null);
     }
 }
 
 // Выбор проекта
-async function selectProject(projectName) {
+async function selectProject(projectName, restoreFilters) {
     selectedProject = projectName;
     
     // Обновляем классы selected у опций
@@ -113,7 +235,7 @@ async function selectProject(projectName) {
     updateCampaignFilterDisplay();
     
     // Загружаем домены и кампании для выбранного проекта
-    await loadDomainsAndCampaigns(projectName);
+    await loadDomainsAndCampaigns(projectName, restoreFilters);
     
     // Очищаем таблицу при смене проекта
     document.getElementById('tableContainer').innerHTML = '';
@@ -123,10 +245,12 @@ async function selectProject(projectName) {
     setDataActionButtonsDisabled(true);
     document.getElementById('message').innerHTML = '';
     currentData = [];
+
+    saveFiltersState();
 }
 
 // Загрузка доменов и кампаний для проекта
-async function loadDomainsAndCampaigns(projectName) {
+async function loadDomainsAndCampaigns(projectName, restoreFilters) {
     try {
         const response = await fetch(`/api/campaign-info?projectName=${encodeURIComponent(projectName)}`);
         if (!response.ok) {
@@ -137,8 +261,13 @@ async function loadDomainsAndCampaigns(projectName) {
         // Извлекаем уникальные домены
         domains = [...new Set(campaigns.map(campaign => campaign.domain))].filter(domain => domain);
         
-        // Инициализируем фильтр доменов
-        initializeDomainFilter();
+        // Инициализируем фильтр доменов (с учётом сохранённого домена)
+        initializeDomainFilter(restoreFilters && restoreFilters.domain);
+
+        // Восстанавливаем сохранённые кампании после того, как построен список
+        if (restoreFilters && Array.isArray(restoreFilters.campaigns) && restoreFilters.campaigns.length > 0) {
+            restoreCampaignSelection(restoreFilters.campaigns);
+        }
         
     } catch (error) {
         console.error('Error loading domains and campaigns:', error);
@@ -149,8 +278,21 @@ async function loadDomainsAndCampaigns(projectName) {
     }
 }
 
+// Восстановление выбранных кампаний после перезагрузки страницы
+function restoreCampaignSelection(campaignIds) {
+    const availableCampaigns = new Set(
+        campaigns
+            .filter(campaign => campaign.domain === selectedDomain)
+            .map(campaign => campaign.campaign_id)
+    );
+
+    selectedCampaigns = new Set(campaignIds.filter(id => availableCampaigns.has(id)));
+    updateCampaignFilterDisplay();
+    saveFiltersState();
+}
+
 // Инициализация фильтра доменов
-function initializeDomainFilter() {
+function initializeDomainFilter(preferredDomain) {
     const domainOptions = document.getElementById('domainOptions');
     const domainFilter = document.getElementById('domainFilter');
     
@@ -177,8 +319,12 @@ function initializeDomainFilter() {
         domainOptions.appendChild(option);
     });
     
-    // Выбираем первый домен по умолчанию
-    selectDomain(domains[0]);
+    // Выбираем сохранённый домен, иначе первый в списке
+    const domainToSelect = preferredDomain && domains.includes(preferredDomain)
+        ? preferredDomain
+        : domains[0];
+
+    selectDomain(domainToSelect);
 }
 
 // Выбор домена
@@ -204,6 +350,8 @@ function selectDomain(domain) {
     
     // Обновляем фильтр кампаний
     updateCampaignFilter();
+
+    saveFiltersState();
 }
 
 // Обновление фильтра кампаний
@@ -252,6 +400,7 @@ function updateCampaignFilter() {
                 selectedCampaigns.delete(campaign.campaign_id);
             }
             updateCampaignFilterDisplay();
+            saveFiltersState();
         });
         
         campaignOptions.appendChild(option);
@@ -272,6 +421,7 @@ function selectAllCampaigns() {
     
     updateCampaignOptions();
     updateCampaignFilterDisplay();
+    saveFiltersState();
 }
 
 // Сбросить все кампании
@@ -279,6 +429,7 @@ function deselectAllCampaigns() {
     selectedCampaigns.clear();
     updateCampaignOptions();
     updateCampaignFilterDisplay();
+    saveFiltersState();
 }
 
 // Обновление отображения чекбоксов
@@ -527,12 +678,16 @@ function resetAllFilters() {
     
     // Сбрасываем диапазон дат на сегодня
     setTodayDateRange();
+    syncDateRangeConstraints();
     
     // Очищаем сообщения
     document.getElementById('message').innerHTML = '';
     
     // Очищаем таблицу
     document.getElementById('tableContainer').innerHTML = '';
+    // Прячем блок результатов до новой загрузки
+    const resultsCard = document.getElementById('resultsCard');
+    if (resultsCard) resultsCard.classList.add('is-empty');
     // Скрываем пагинацию
     const pagination = document.getElementById('paginationContainer');
     if (pagination) pagination.style.display = 'none';
@@ -545,6 +700,9 @@ function resetAllFilters() {
     
     // Закрываем все dropdown'ы
     closeAllDropdowns();
+
+    // Запоминаем сброшенное состояние (по умолчанию)
+    saveFiltersState();
     
     console.log('Все фильтры сброшены');
 }
@@ -560,6 +718,8 @@ async function loadData() {
     messageDiv.innerHTML = '';
     document.getElementById('tableContainer').innerHTML = '';
     document.getElementById('paginationContainer').style.display = 'none';
+    const resultsCard = document.getElementById('resultsCard');
+    if (resultsCard) resultsCard.classList.add('is-empty');
     setDataActionButtonsDisabled(true);
     currentData = [];
     currentPage = 1;
@@ -584,7 +744,7 @@ async function loadData() {
         return;
     }
 
-    loadingDiv.style.display = 'block';
+    loadingDiv.style.display = 'flex';
 
     try {
         const campaignIds = getSelectedCampaignIds();
@@ -615,7 +775,6 @@ async function loadData() {
         currentPage = 1;
         sortTable();
 
-        messageDiv.innerHTML = `<div class="success">Найдено записей: ${data.length}</div>`;
         setDataActionButtonsDisabled(data.length === 0);
 
     } catch (error) {
@@ -628,7 +787,11 @@ async function loadData() {
 
 // Сортировка таблицы
 function sortTable() {
-    if (currentData.length === 0) return;
+    if (currentData.length === 0) {
+        lastSortedData = [];
+        renderCurrentView();
+        return;
+    }
 
     const sortedData = [...currentData].sort((a, b) => {
         let valueA = a[sortField];
@@ -691,25 +854,35 @@ function calculateDataPeriod() {
     };
 }
 
+function renderDataPeriod() {
+    const periodEl = document.getElementById('dataPeriod');
+
+    if (!periodEl) {
+        return;
+    }
+
+    const period = calculateDataPeriod();
+    if (!period) {
+        periodEl.innerHTML = '';
+        return;
+    }
+
+    periodEl.innerHTML = `<span><strong>Данные за период:</strong> с ${escapeHtml(period.min)} по ${escapeHtml(period.max)}</span>`;
+}
+
 function displayTable(data) {
     const tableContainer = document.getElementById('tableContainer');
+
+    renderDataPeriod();
     
     if (data.length === 0) {
-        tableContainer.innerHTML = '<p>Нет данных для отображения</p>';
+        tableContainer.innerHTML = '<div class="empty-state">Нет данных для отображения</div>';
         document.getElementById('paginationContainer').style.display = 'none';
         return;
     }
 
-    // Вычисляем период данных
-    const period = calculateDataPeriod();
-    let periodHTML = '';
-    if (period) {
-        periodHTML = `<div class="data-period" style="margin-bottom: 15px; padding: 10px; background-color: #f5f5f5; border-radius: 4px; font-size: 14px;">`
-                  + `<strong>Данные за период:</strong> с ${escapeHtml(period.min)} по ${escapeHtml(period.max)}`
-                  + `</div>`;
-    }
-
-    let tableHTML = periodHTML + `
+    let tableHTML = `
+        <div class="table-scroll">
         <table>
             <thead>
                 <tr>
@@ -735,7 +908,7 @@ function displayTable(data) {
         `;
     });
 
-    tableHTML += '</tbody></table>';
+    tableHTML += '</tbody></table></div>';
     tableContainer.innerHTML = tableHTML;
     
     // Обновляем индикаторы сортировки в заголовках
@@ -899,6 +1072,21 @@ function closeAnalysisModal() {
     }
 }
 
+function setAnalysisMeta(project, domain, period) {
+    const values = {
+        analysisMetaProject: project || '—',
+        analysisMetaDomain: domain || '—',
+        analysisMetaPeriod: period || '—'
+    };
+
+    Object.keys(values).forEach(function (id) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = values[id];
+        }
+    });
+}
+
 function buildAnalysisReportHtml() {
     const defaultDataset = getDefaultAnalysisDataset();
     const egorDataset = getEgorAnalysisDataset();
@@ -908,9 +1096,7 @@ function buildAnalysisReportHtml() {
         return `<div class="error">Не найден HTML-шаблон объединенного отчета.</div>`;
     }
 
-    setTemplateText(fragment, 'project', defaultDataset.project);
-    setTemplateText(fragment, 'domain', defaultDataset.domain);
-    setTemplateText(fragment, 'period', defaultDataset.periodDisplay);
+    setAnalysisMeta(defaultDataset.project, defaultDataset.domain, defaultDataset.periodDisplay);
     setTemplateText(fragment, 'defaultFormula', 'Формула NPS: ((promoter − critic) / (promoter + passiv + critic)) × 100%');
     setTemplateText(
         fragment,
@@ -1032,6 +1218,9 @@ function createDefaultAnalysisMetricsRow(row) {
     setTemplateText(rowElement, 'critic', String(row.critic));
     setTemplateText(rowElement, 'nps', `${row.nps.toFixed(2)}%`);
 
+    applyValueTone(rowElement, 'averageScore', scoreToneClass(row.averageScore));
+    applyValueTone(rowElement, 'nps', npsToneClass(row.nps));
+
     return rowElement;
 }
 
@@ -1052,6 +1241,8 @@ function createDefaultAnalysisCommentRow(comment) {
     );
     setTemplateText(rowElement, 'email', comment.email || '');
     setTemplateText(rowElement, 'text', comment.text || '');
+
+    applyValueTone(rowElement, 'score', scoreToneClass(comment.score));
 
     return rowElement;
 }
@@ -1280,6 +1471,9 @@ function createEgorStatsRow(row) {
     setTemplateText(rowElement, 'responsesRequired', String(row.responsesRequired));
     setTemplateText(rowElement, 'responsesRemaining', String(row.responsesRemaining));
 
+    applyValueTone(rowElement, 'mean', scoreToneClass(row.mean));
+    applyValueTone(rowElement, 'nps', npsToneClass(row.nps));
+
     return rowElement;
 }
 
@@ -1292,6 +1486,50 @@ function setTemplateText(root, role, value) {
     const element = root.querySelector(`[data-role="${role}"]`);
     if (element) {
         element.textContent = value;
+    }
+}
+
+// Цветовые пороги для Score и NPS в таблицах анализа
+function scoreToneClass(value) {
+    const num = Number(value);
+
+    if (!Number.isFinite(num)) {
+        return '';
+    }
+    if (num >= 9) {
+        return 'value-good';
+    }
+    if (num <= 6) {
+        return 'value-bad';
+    }
+
+    return 'value-mid';
+}
+
+function npsToneClass(value) {
+    const num = Number(value);
+
+    if (!Number.isFinite(num)) {
+        return '';
+    }
+    if (num >= 50) {
+        return 'value-good';
+    }
+    if (num < 0) {
+        return 'value-bad';
+    }
+
+    return 'value-mid';
+}
+
+function applyValueTone(root, role, className) {
+    if (!className) {
+        return;
+    }
+
+    const element = root.querySelector(`[data-role="${role}"]`);
+    if (element) {
+        element.classList.add(className);
     }
 }
 
@@ -1488,8 +1726,16 @@ document.addEventListener('click', function(e) {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Восстанавливаем сохранённые фильтры (проект/домен/кампании восстановятся после загрузки проектов)
+    pendingFiltersRestore = readSavedFilters();
+    applySavedDateRange(pendingFiltersRestore);
+
+    const dateFromFilter = document.getElementById('dateFromFilter');
+    const dateToFilter = document.getElementById('dateToFilter');
+    if (dateFromFilter) dateFromFilter.addEventListener('change', handleDateFromChange);
+    if (dateToFilter) dateToFilter.addEventListener('change', handleDateToChange);
+
     loadProjects();
-    setTodayDateRange();
 
     // Pagination controls wiring
     const pageSizeSelect = document.getElementById('pageSizeSelect');
@@ -1578,6 +1824,7 @@ function renderCurrentView() {
     const total = lastSortedData.length;
     if (total === 0) {
         displayTable([]);
+        updatePaginationUI(0, 0);
         return;
     }
     const totalPages = getTotalPages();
@@ -1607,27 +1854,85 @@ function setPage(page) {
 
 function updatePaginationUI(totalCount, totalPages) {
     const container = document.getElementById('paginationContainer');
+    const card = document.getElementById('resultsCard');
     const pageInfo = document.getElementById('pageInfo');
-    const totalCountEl = document.getElementById('totalCount');
+    const pageInfoTop = document.getElementById('pageInfoTop');
+    const nav = document.getElementById('paginationNav');
+    const pageNumbers = document.getElementById('pageNumbers');
+    const summary = document.getElementById('resultsSummary');
+    const firstBtn = document.getElementById('firstPageBtn');
     const prevBtn = document.getElementById('prevPageBtn');
     const nextBtn = document.getElementById('nextPageBtn');
-    const firstBtn = document.getElementById('firstPageBtn');
     const lastBtn = document.getElementById('lastPageBtn');
 
+    if (card) card.classList.remove('is-empty');
     if (!container) return;
 
     // Показать контейнер, если есть данные
     container.style.display = totalCount > 0 ? 'flex' : 'none';
 
-    if (pageInfo) pageInfo.textContent = `Страница ${currentPage} из ${totalPages}`;
-    if (totalCountEl) totalCountEl.textContent = `Всего: ${totalCount}`;
+    const hasPagination = totalPages > 1;
 
-    const isFirst = currentPage === 1;
-    const isLast = currentPage === totalPages;
-    if (firstBtn) firstBtn.disabled = isFirst;
-    if (prevBtn) prevBtn.disabled = isFirst;
-    if (nextBtn) nextBtn.disabled = isLast;
-    if (lastBtn) lastBtn.disabled = isLast;
+    if (pageInfo) {
+        pageInfo.textContent = hasPagination ? `Страница ${currentPage} из ${totalPages}` : '';
+    }
+    if (pageInfoTop) {
+        pageInfoTop.textContent = hasPagination ? `Страница ${currentPage} из ${totalPages}` : '';
+    }
+    if (nav) nav.classList.toggle('hidden', !hasPagination);
+    if (pageNumbers) renderPageNumbers(pageNumbers, totalPages);
+
+    if (summary) {
+        const availableOnPage = totalCount > 0
+            ? Math.max(0, Math.min(pageSize, totalCount - (currentPage - 1) * pageSize))
+            : 0;
+
+        summary.innerHTML = `Найдено записей: ${totalCount} <span class="results-summary__muted">(доступно на странице ${availableOnPage})</span>`;
+    }
+
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+    if (firstBtn) firstBtn.disabled = currentPage <= 1;
+    if (lastBtn) lastBtn.disabled = currentPage >= totalPages;
+}
+
+// Окно номеров страниц — не больше 7.
+function renderPageNumbers(container, totalPages) {
+    const PAGE_WINDOW = 7;
+
+    container.innerHTML = '';
+
+    if (totalPages <= 1) {
+        return;
+    }
+
+    let start = Math.max(currentPage - Math.floor(PAGE_WINDOW / 2), 1);
+    let end = start + PAGE_WINDOW - 1;
+
+    if (end > totalPages) {
+        end = totalPages;
+        start = Math.max(end - PAGE_WINDOW + 1, 1);
+    }
+
+    for (let pageNum = start; pageNum <= end; pageNum++) {
+        if (pageNum === currentPage) {
+            const current = document.createElement('span');
+            current.className = 'page-number is-current';
+            current.textContent = String(pageNum);
+            current.setAttribute('aria-current', 'page');
+            container.appendChild(current);
+            continue;
+        }
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'page-number';
+        button.textContent = String(pageNum);
+        button.addEventListener('click', function () {
+            setPage(pageNum);
+        });
+        container.appendChild(button);
+    }
 }
 
 // ===== Helpers for comments extraction =====

@@ -3,161 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <title>NPS Survey Data</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230891b2'/%3E%3Ctext x='16' y='22' font-family='Arial,sans-serif' font-size='16' font-weight='bold' fill='white' text-anchor='middle'%3EN%3C/text%3E%3C/svg%3E">
+    <meta name="theme-color" content="#f8fafc">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <script src="theme.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="header-row">
+    <div id="matrixBackground" class="matrix-bg" aria-hidden="true">
+        <canvas id="matrixCanvas"></canvas>
+    </div>
+
+    <div class="page">
+        <header class="page-header">
+            <div class="page-header__bar">
+                <span class="badge">NPS · Analytics</span>
+                <div class="page-header__actions">
+                    <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Переключить тему" title="Тёмная тема">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="theme-icon theme-icon-to-dark" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/>
+                        </svg>
+                        <span class="theme-icon theme-icon-to-matrix" aria-hidden="true">😎</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="theme-icon theme-icon-to-light" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="page-rule" aria-hidden="true"></div>
             <h1>NPS Survey Data</h1>
-            <button onclick="resetAllFilters()" class="reset-all-btn">Сбросить все</button>
-        </div>
-        
-        <div class="form-row">
-            <!-- Фильтр: Проект -->
-            <div class="filter-group">
-                <label for="projectsDropdown">Проект:</label>
-                <div class="dropdown">
-                    <input type="text"
-                           id="projectsDropdown"
-                           class="dropdown-input"
-                           placeholder="Загрузка проектов..."
-                           readonly
-                           onclick="toggleProjectDropdown()">
-                    <div class="dropdown-list" id="projectList">
-                        <div class="search-container">
-                            <input type="text"
-                                id="projectSearch"
-                                class="search-input"
-                                placeholder="Поиск проекта..."
-                                oninput="filterProjects()">
+            <p class="page-subtitle">Выгрузка ответов, метрики NPS и статистическая значимость по кампаниям.</p>
+        </header>
+
+        <section class="card filters-card">
+            <div class="form-row">
+                <!-- Фильтр: Проект -->
+                <div class="filter-group">
+                    <label for="projectsDropdown">Проект</label>
+                    <div class="dropdown">
+                        <input type="text"
+                               id="projectsDropdown"
+                               class="dropdown-input"
+                               placeholder="Загрузка проектов..."
+                               readonly
+                               onclick="toggleProjectDropdown()">
+                        <div class="dropdown-list" id="projectList">
+                            <div class="search-container">
+                                <input type="text"
+                                    id="projectSearch"
+                                    class="search-input"
+                                    placeholder="Поиск проекта..."
+                                    oninput="filterProjects()">
+                            </div>
+                            <div class="dropdown-options" id="projectOptions"></div>
                         </div>
-                        <div class="dropdown-options" id="projectOptions"></div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Фильтр: Домен -->
-            <div class="filter-group">
-                <label for="domainFilter">Домен:</label>
-                <div class="dropdown">
-                    <input type="text"
-                           id="domainFilter"
-                           class="dropdown-input"
-                           placeholder="Выберите проект"
-                           readonly
-                           onclick="toggleDomainDropdown()">
-                    <div class="dropdown-list" id="domainList">
-                        <div class="search-container">
-                            <input type="text"
-                                id="domainSearch"
-                                class="search-input"
-                                placeholder="Поиск домена..."
-                                oninput="filterDomains()">
+
+                <!-- Фильтр: Домен -->
+                <div class="filter-group">
+                    <label for="domainFilter">Домен</label>
+                    <div class="dropdown">
+                        <input type="text"
+                               id="domainFilter"
+                               class="dropdown-input"
+                               placeholder="Выберите проект"
+                               readonly
+                               onclick="toggleDomainDropdown()">
+                        <div class="dropdown-list" id="domainList">
+                            <div class="search-container">
+                                <input type="text"
+                                    id="domainSearch"
+                                    class="search-input"
+                                    placeholder="Поиск домена..."
+                                    oninput="filterDomains()">
+                            </div>
+                            <div class="dropdown-options" id="domainOptions"></div>
                         </div>
-                        <div class="dropdown-options" id="domainOptions"></div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Фильтр: Выберите ID кампании -->
-            <div class="filter-group">
-                <label for="campaignFilter">ID кампании:</label>
-                <div class="dropdown">
-                    <input type="text"
-                           id="campaignFilter"
-                           class="dropdown-input"
-                           placeholder="Выберите домен"
-                           readonly
-                           onclick="toggleCampaignDropdown()">
-                    <div class="dropdown-list" id="campaignList">
-                        <div class="search-container">
-                            <input type="text"
-                                id="campaignSearch"
-                                class="search-input"
-                                placeholder="Поиск campaign..."
-                                oninput="filterCampaigns()">
-                        </div>
-                        <div class="dropdown-options" id="campaignOptions">
-                            <div class="checkbox-controls">
-                                <button type="button" onclick="selectAllCampaigns()" class="select-all-btn">Выбрать все</button>
-                                <button type="button" onclick="deselectAllCampaigns()" class="deselect-all-btn">Сбросить все</button>
+
+                <!-- Фильтр: Выберите ID кампании -->
+                <div class="filter-group">
+                    <label for="campaignFilter">ID кампании</label>
+                    <div class="dropdown">
+                        <input type="text"
+                               id="campaignFilter"
+                               class="dropdown-input"
+                               placeholder="Выберите домен"
+                               readonly
+                               onclick="toggleCampaignDropdown()">
+                        <div class="dropdown-list" id="campaignList">
+                            <div class="search-container">
+                                <input type="text"
+                                    id="campaignSearch"
+                                    class="search-input"
+                                    placeholder="Поиск campaign..."
+                                    oninput="filterCampaigns()">
+                            </div>
+                            <div class="dropdown-options" id="campaignOptions">
+                                <div class="checkbox-controls">
+                                    <button type="button" onclick="selectAllCampaigns()" class="select-all-btn">Выбрать все</button>
+                                    <button type="button" onclick="deselectAllCampaigns()" class="deselect-all-btn">Сбросить все</button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Фильтр: Диапазон дат -->
-            <div class="date-filters-inline">
-                <div class="filter-group">
-                    <label for="dateFromFilter">Дата с:</label>
-                    <div class="date-input-wrapper">
-                        <input type="date" id="dateFromFilter">
+
+                <!-- Фильтр: Диапазон дат -->
+                <div class="date-filters-inline">
+                    <div class="filter-group">
+                        <label for="dateFromFilter">Дата с</label>
+                        <div class="date-input-wrapper">
+                            <input type="date" id="dateFromFilter">
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="dateToFilter">Дата по</label>
+                        <div class="date-input-wrapper">
+                            <input type="date" id="dateToFilter">
+                        </div>
                     </div>
                 </div>
-
-                <div class="filter-group">
-                    <label for="dateToFilter">Дата по:</label>
-                    <div class="date-input-wrapper">
-                        <input type="date" id="dateToFilter">
-                    </div>
-                </div>
             </div>
-        </div>
 
-        <div class="buttons-group">
-            <button onclick="loadData()">Загрузить данные с БД</button>
-            <button onclick="downloadCSV()" id="downloadBtn" disabled>Скачать CSV</button>
-            <button onclick="openAnalysisModal()" id="analyzeBtn" disabled>Анализ данных</button>
-        </div>
-        
+            <div class="buttons-group">
+                <button type="button" onclick="loadData()" class="primary-btn">Показать</button>
+                <button type="button" onclick="resetAllFilters()" class="reset-all-btn">Сбросить все</button>
+            </div>
+        </section>
+
         <div id="message"></div>
         <div id="loading" class="loading" style="display: none;">Загрузка данных...</div>
-        
-        <div id="tableContainer" style="margin-top: 20px;"></div>
-        <div id="paginationContainer" class="pagination" style="display: none;">
-            <div class="pagination-left">
-                <label for="pageSizeSelect">Показывать по:</label>
-                <select id="pageSizeSelect">
-                    <option value="25" selected>25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                    <option value="200">200</option>
-                </select>
-                <span id="totalCount" class="total-count"></span>
+
+        <section class="card results-card is-empty" id="resultsCard">
+            <div class="results-head">
+                <h2 id="resultsSummary" class="results-summary">Найдено записей: 0 <span class="results-summary__muted">(доступно на странице 0)</span></h2>
+                <div class="results-actions">
+                    <button type="button" onclick="openAnalysisModal()" id="analyzeBtn" disabled class="table-action table-action--accent">Анализ данных</button>
+                    <button type="button" onclick="downloadCSV()" id="downloadBtn" disabled class="table-action table-action--success">Скачать CSV</button>
+                </div>
             </div>
-            <div class="pagination-right">
-                <button id="firstPageBtn" class="page-btn" title="Первая">«</button>
-                <button id="prevPageBtn" class="page-btn" title="Назад">‹</button>
-                <span id="pageInfo" class="page-info">Страница 1 из 1</span>
-                <button id="nextPageBtn" class="page-btn" title="Вперёд">›</button>
-                <button id="lastPageBtn" class="page-btn" title="Последняя">»</button>
+            <div class="results-meta">
+                <div class="data-period" id="dataPeriod"></div>
+                <div class="page-info page-info--top" id="pageInfoTop"></div>
             </div>
-        </div>
+            <div id="tableContainer"></div>
+            <div id="paginationContainer" class="pagination" style="display: none;">
+                <div class="pagination-info">
+                    <span id="pageInfo" class="page-info"></span>
+                </div>
+                <div class="pagination-controls">
+                    <nav class="pagination-nav hidden" id="paginationNav" aria-label="Постраничная навигация">
+                        <button type="button" id="firstPageBtn" class="page-btn" title="Первая страница" aria-label="Первая страница">«</button>
+                        <button type="button" id="prevPageBtn" class="page-btn" title="Назад" aria-label="Предыдущая страница">‹</button>
+                        <div id="pageNumbers" class="page-numbers"></div>
+                        <button type="button" id="nextPageBtn" class="page-btn" title="Вперёд" aria-label="Следующая страница">›</button>
+                        <button type="button" id="lastPageBtn" class="page-btn" title="Последняя страница" aria-label="Последняя страница">»</button>
+                    </nav>
+                    <div class="page-size">
+                        <label for="pageSizeSelect">На странице</label>
+                        <select id="pageSizeSelect">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 
     <!-- Analysis Modal -->
     <div id="analysisModal" class="modal-overlay" style="display: none;">
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="analysisTitle">
             <div class="modal-header">
-                <h2 id="analysisTitle">Отчет анализа данных</h2>
-                <button class="modal-close" id="analysisCloseBtn" aria-label="Закрыть">✕</button>
+                <div class="modal-header__text">
+                    <h2 id="analysisTitle">Отчет анализа данных</h2>
+                    <div class="analysis-meta" id="analysisMeta">
+                        <div class="analysis-title"><strong>Проект:</strong> <span id="analysisMetaProject"></span></div>
+                        <div class="analysis-title"><strong>Домен:</strong> <span id="analysisMetaDomain"></span></div>
+                        <div class="analysis-title"><strong>Данные за период:</strong> <span id="analysisMetaPeriod"></span></div>
+                    </div>
+                </div>
+                <button type="button" class="modal-close" id="analysisCloseBtn" aria-label="Закрыть">✕</button>
             </div>
             <div class="modal-body" id="analysisBody"></div>
             <div class="modal-footer hidden" id="analysisFooter">
-                <button class="modal-action" id="analysisDownloadBtn" type="button">Скачать CSV</button>
-                <button class="modal-action" id="analysisDownloadExcelBtn" type="button">Скачать XLSX</button>
+                <button type="button" class="table-action table-action--success" id="analysisDownloadBtn">Скачать CSV</button>
+                <button type="button" class="table-action" id="analysisDownloadExcelBtn">Скачать XLSX</button>
             </div>
         </div>
     </div>
 
     <template id="combinedAnalysisTemplate">
-        <div class="analysis-header">
-            <div class="analysis-title"><strong>Проект:</strong> <span data-role="project"></span></div>
-            <div class="analysis-title"><strong>Домен:</strong> <span data-role="domain"></span></div>
-            <div class="analysis-title"><strong>Данные за период:</strong> <span data-role="period"></span></div>
-        </div>
         <div class="analysis-section-block">
             <h3 class="analysis-block-title">Общая сводка</h3>
             <div class="analysis-table-wrap">
@@ -201,30 +250,32 @@
                     <tbody data-role="egorRows"></tbody>
                 </table>
             </div>
-            <div class="summary-box">
-                <div class="summary-title"><strong>Пояснение к таблице «Стат. значимость»</strong></div>
-                <div class="muted">
-                    Расчет адаптирован под данные сервиса и выполняется по <strong>campaign_id</strong>, так как API не возвращает поле <strong>site</strong> из исходного расчета в Google Colab.
+            <details class="summary-box">
+                <summary class="summary-title"><strong>Пояснение к таблице «Стат. значимость»</strong></summary>
+                <div class="summary-box__body">
+                    <div class="muted">
+                        Расчет адаптирован под данные сервиса и выполняется по <strong>campaign_id</strong>, так как API не возвращает поле <strong>site</strong> из исходного расчета в Google Colab.
+                    </div>
+                    <div class="analysis-source-note">
+                        За основу расчета был взят скрипт из Google Colab:
+                        <a
+                            href="https://colab.research.google.com/drive/188ZOx09HFZUgqLGaQsOVRvovlhuscQWx?usp=sharing#scrollTo=pPSYLk7VmmIN"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            открыть Colab
+                        </a>
+                    </div>
+                    <div class="formula" data-role="egorFormula"></div>
+                    <ul class="analysis-notes-list">
+                        <li><strong>Promoters</strong> — это оценки 9-10.</li>
+                        <li><strong>Detractors</strong> — это оценки 0-6.</li>
+                        <li><strong>SE</strong> — стандартная ошибка, показывает статистическую неопределенность результата.</li>
+                        <li><strong>Z</strong> — коэффициент доверительного интервала; в этом отчете используется значение 1.96, что соответствует доверительной вероятности около 95%.</li>
+                        <li><strong>Целевая ошибка</strong> — это допустимая погрешность результата; в текущем расчете она задана как 5%.</li>
+                    </ul>
                 </div>
-                <div class="analysis-source-note">
-                    За основу расчета был взят скрипт из Google Colab:
-                    <a
-                        href="https://colab.research.google.com/drive/188ZOx09HFZUgqLGaQsOVRvovlhuscQWx?usp=sharing#scrollTo=pPSYLk7VmmIN"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        открыть Colab
-                    </a>
-                </div>
-                <div class="formula" data-role="egorFormula"></div>
-                <ul class="analysis-notes-list">
-                    <li><strong>Promoters</strong> — это оценки 9-10.</li>
-                    <li><strong>Detractors</strong> — это оценки 0-6.</li>
-                    <li><strong>SE</strong> — стандартная ошибка, показывает статистическую неопределенность результата.</li>
-                    <li><strong>Z</strong> — коэффициент доверительного интервала; в этом отчете используется значение 1.96, что соответствует доверительной вероятности около 95%.</li>
-                    <li><strong>Целевая ошибка</strong> — это допустимая погрешность результата; в текущем расчете она задана как 5%.</li>
-                </ul>
-            </div>
+            </details>
         </div>
         <div class="top-comments" data-role="commentsSection">
             <h3 class="top-comments__title">ТОП‑5 комментариев</h3>
@@ -285,8 +336,8 @@
     <script src="vendor/xlsx.full.min.js"></script>
     <script src="script.js"></script>
     <div class="scroll-fab">
-        <button id="scrollUpBtn" class="fab-btn" title="Наверх">▲</button>
-        <button id="scrollDownBtn" class="fab-btn" title="Вниз">▼</button>
+        <button type="button" id="scrollUpBtn" class="fab-btn" title="Наверх">▲</button>
+        <button type="button" id="scrollDownBtn" class="fab-btn" title="Вниз">▼</button>
     </div>
 </body>
 </html>
