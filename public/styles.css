@@ -442,8 +442,13 @@ button.primary-btn:disabled {
 }
 
 .theme-toggle svg {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
+    color: var(--accent-strong);
+}
+
+html.dark .theme-toggle svg {
+    color: var(--primary-bg);
 }
 
 .theme-toggle .theme-icon {
@@ -1072,11 +1077,18 @@ button.page-number {
     background-color: transparent;
 }
 
-button.page-number:hover,
-.page-number:hover {
-    background-color: var(--row-hover);
-    color: var(--text);
+button.page-number:hover:not(.is-current),
+.page-number:hover:not(.is-current) {
+    background-color: var(--accent-soft);
+    border-color: var(--accent-strong);
+    color: var(--accent-strong);
     transform: none;
+}
+
+html.dark button.page-number:hover:not(.is-current),
+html.dark .page-number:hover:not(.is-current) {
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 .page-number.is-current {
@@ -1085,6 +1097,11 @@ button.page-number:hover,
     color: var(--accent-strong-fg);
     font-weight: 600;
     cursor: default;
+}
+
+html.dark .page-number.is-current {
+    background-color: var(--primary-bg);
+    color: var(--primary-fg);
 }
 
 .hidden {
