@@ -57,9 +57,9 @@
     --thead-hover: #d7e0ea;
     --row-hover: rgba(241, 245, 249, 0.75);
     --table-bg: #f8fafc;
-    --table-row-hover: #edf2f7;
-    --table-head-bg: #d7eef6;
-    --table-head-hover: #c5e5f1;
+    --table-row-hover: rgba(15, 23, 42, 0.018);
+    --table-head-bg: #dceff5;
+    --table-head-hover: #cbe7f2;
     --total-row: rgba(8, 145, 178, 0.1);
     --total-row-hover: rgba(8, 145, 178, 0.16);
 
@@ -121,7 +121,7 @@ html.dark {
     --thead-hover: #263449;
     --row-hover: rgba(30, 41, 59, 0.45);
     --table-bg: #0f172a;
-    --table-row-hover: rgba(51, 65, 85, 0.5);
+    --table-row-hover: rgba(148, 163, 184, 0.045);
     --table-head-bg: #1e293b;
     --table-head-hover: #263449;
     --total-row: rgba(34, 211, 238, 0.12);
@@ -144,6 +144,53 @@ html.dark {
     --shadow-xl: 0 30px 80px -20px rgba(0, 0, 0, 0.85);
 
     color-scheme: dark;
+}
+
+/* Матрица: глубина блоков через зелёное свечение */
+html.matrix {
+    --border: rgba(74, 222, 128, 0.16);
+    --border-strong: rgba(74, 222, 128, 0.26);
+    --border-soft: rgba(34, 197, 94, 0.1);
+    --table-row-hover: rgba(34, 197, 94, 0.04);
+
+    --shadow-sm: 0 0 10px -4px rgba(34, 197, 94, 0.3), 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-card:
+        inset 0 1px 0 rgba(187, 247, 208, 0.08),
+        0 0 0 1px rgba(34, 197, 94, 0.12),
+        0 20px 44px -30px rgba(0, 0, 0, 0.9),
+        0 0 20px -8px rgba(34, 197, 94, 0.12),
+        0 0 55px -18px rgba(34, 197, 94, 0.15);
+    --shadow-md:
+        0 0 0 1px rgba(34, 197, 94, 0.12),
+        0 18px 40px -22px rgba(0, 0, 0, 0.85),
+        0 0 30px -12px rgba(34, 197, 94, 0.18);
+    --shadow-xl:
+        0 0 0 1px rgba(34, 197, 94, 0.16),
+        0 30px 80px -24px rgba(0, 0, 0, 0.95),
+        0 0 75px -16px rgba(34, 197, 94, 0.27);
+}
+
+/* В матрице модалка тоже уходит в зелёный оттенок вместо нейтрального серого */
+html.matrix .modal-content {
+    background-color: #07130b;
+}
+
+html.matrix .modal-header,
+html.matrix .modal-footer {
+    background-color: #061009;
+}
+
+/* Свечение — только у самого окна анализа; внутренние блоки без ореола */
+html.matrix .modal-content .analysis-table-wrap,
+html.matrix .modal-content .summary-box,
+html.matrix .modal-content .comments-table {
+    box-shadow: none;
+}
+
+/* Внутри окна границы как в обычной тёмной теме — зелёный только по контуру окна */
+html.matrix .modal-body {
+    --border-strong: #1e293b;
+    --border-soft: rgba(30, 41, 59, 0.7);
 }
 
 /* ---------------------------- база ---------------------------- */
@@ -228,6 +275,13 @@ html.matrix .matrix-bg {
     margin: 0 0 18px;
 }
 
+/* Матрица: линия над заголовком — ровная, приглушённая, с мягким свечением */
+html.matrix .page-rule {
+    background-image: none;
+    background-color: rgba(74, 222, 128, 0.32);
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.18);
+}
+
 .page-header__actions {
     display: flex;
     align-items: center;
@@ -254,6 +308,20 @@ html.dark .badge {
     color: #a5b4fc;
 }
 
+/* Матрица: бейдж в зелёной палитре с мягким свечением */
+html.matrix .badge {
+    border-color: rgba(74, 222, 128, 0.35);
+    background: rgba(34, 197, 94, 0.1);
+    color: #86efac;
+    box-shadow: 0 0 12px -6px rgba(34, 197, 94, 0.35);
+    text-shadow: 0 0 6px rgba(74, 222, 128, 0.3);
+}
+
+/* Матрица: рамка у кнопки смены темы в зелёной палитре */
+html.matrix .theme-toggle {
+    border-color: rgba(74, 222, 128, 0.35);
+}
+
 .page-header h1 {
     margin: 0 0 8px;
     font-size: clamp(26px, 3vw, 34px);
@@ -268,6 +336,14 @@ html.dark .badge {
     font-size: 14px;
 }
 
+/* Матрица: мягкое зелёное свечение вокруг заголовка и подзаголовка, цвет текста прежний */
+html.matrix .page-header h1,
+html.matrix .page-subtitle {
+    text-shadow:
+        0 0 12px rgba(34, 197, 94, 0.25),
+        0 0 32px rgba(34, 197, 94, 0.12);
+}
+
 /* --------------------------- карточки ------------------------- */
 
 .card {
@@ -279,12 +355,29 @@ html.dark .badge {
     backdrop-filter: blur(10px);
 }
 
+html:not(.dark) .card {
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.22);
+}
+
 .filters-card {
     position: relative;
-    /* выше следующей карточки, иначе её фон перекрывает выпадающие списки */
-    z-index: 20;
     padding: 22px 24px;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
     transition: box-shadow 0.2s ease, background-color 0.25s ease, border-color 0.25s ease;
+}
+
+/* Блюр вынесен в псевдоэлемент: карточка не создаёт stacking context,
+   поэтому её тень перекрывается блоком ниже, а список остаётся сверху. */
+.filters-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    pointer-events: none;
 }
 
 /* --------------------------- фильтры -------------------------- */
@@ -418,8 +511,14 @@ button.primary-btn:disabled {
 }
 
 .reset-all-btn:hover:not(:disabled) {
-    background-color: var(--thead-hover);
-    color: var(--text);
+    background-color: var(--accent-soft);
+    border-color: var(--accent-strong);
+    color: var(--accent-strong);
+}
+
+html.dark .reset-all-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 .theme-toggle {
@@ -451,6 +550,10 @@ html.dark .theme-toggle svg {
     color: var(--primary-bg);
 }
 
+html.matrix .theme-toggle svg {
+    color: #86efac;
+}
+
 .theme-toggle .theme-icon {
     display: none;
 }
@@ -477,21 +580,20 @@ button.table-action {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 6px 16px;
+    padding: 7px 16px;
     border-radius: 8px;
     background-color: transparent;
     border: 1px solid currentColor;
     color: var(--accent);
     font-size: 14px;
     font-weight: 600;
-    line-height: 1.25;
+    line-height: 1.25rem;
     transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 button.table-action:hover:not(:disabled) {
     background-color: var(--accent-soft);
     color: var(--accent);
-    transform: none;
 }
 
 button.table-action--success {
@@ -532,9 +634,10 @@ button.table-action:disabled {
     width: 100%;
     padding-right: 38px;
     cursor: pointer;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 14px center;
+    background-position: right 0.75rem center;
+    background-size: 1.25em 1.25em;
 }
 
 .dropdown-list {
@@ -924,7 +1027,7 @@ tbody tr:last-child td {
 }
 
 tbody tr:hover td {
-    background-color: var(--row-hover);
+    background-color: var(--table-row-hover);
 }
 
 th.sorted-asc::after {
@@ -1016,7 +1119,15 @@ select:focus {
 }
 
 .page-size select {
-    padding: 7px 10px;
+    padding: 7px 32px 7px 10px;
+    font-size: 14px;
+    border-radius: 12px;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25em 1.25em;
 }
 
 .page-info {
@@ -1044,7 +1155,6 @@ select:focus {
     background-color: var(--accent-soft);
     border-color: var(--accent-strong);
     color: var(--accent-strong);
-    transform: none;
 }
 
 .page-btn:disabled {
@@ -1082,7 +1192,6 @@ button.page-number:hover:not(.is-current),
     background-color: var(--accent-soft);
     border-color: var(--accent-strong);
     color: var(--accent-strong);
-    transform: none;
 }
 
 html.dark button.page-number:hover:not(.is-current),
@@ -1102,6 +1211,11 @@ html.dark .page-number:hover:not(.is-current) {
 html.dark .page-number.is-current {
     background-color: var(--primary-bg);
     color: var(--primary-fg);
+}
+
+/* Матрица: у номеров страниц нейтральные рамки, без зелёного */
+html.matrix .page-number:not(.is-current) {
+    border-color: var(--arrow-border);
 }
 
 .hidden {
@@ -1268,7 +1382,7 @@ html.dark .modal-footer {
 .analysis-section-block {
     margin-top: 22px;
     padding-top: 20px;
-    border-top: 1px solid var(--border-strong);
+    border-top: 1px solid var(--rule);
 }
 
 .modal-body > .analysis-section-block:first-child {
@@ -1365,18 +1479,13 @@ html.dark .comments-table td.value-bad {
 .summary-box {
     margin: 18px 0;
     padding: 18px 20px;
-    border: 1px solid rgba(251, 191, 36, 0.55);
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius-lg);
-    background: rgba(255, 251, 235, 0.85);
+    background: var(--panel-soft);
     color: var(--text-soft);
     font-size: 14px;
     line-height: 1.5;
     box-shadow: var(--shadow-sm);
-}
-
-html.dark .summary-box {
-    border-color: rgba(251, 191, 36, 0.28);
-    background: rgba(251, 191, 36, 0.07);
 }
 
 .summary-title {
@@ -1387,10 +1496,40 @@ html.dark .summary-box {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: #92400e;
+    color: var(--accent);
     cursor: pointer;
     list-style: none;
     user-select: none;
+}
+
+.summary-title:hover {
+    color: var(--accent-hover);
+}
+
+.summary-title__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.summary-title__label strong {
+    color: var(--muted);
+}
+
+.summary-title__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    font-style: normal;
 }
 
 .summary-title::-webkit-details-marker {
@@ -1421,10 +1560,6 @@ html.dark .summary-box {
 
 .summary-box[open] .summary-title::after {
     transform: rotate(-135deg);
-}
-
-html.dark .summary-title {
-    color: var(--muted-strong);
 }
 
 .formula {
@@ -1475,7 +1610,7 @@ html.dark .summary-title {
 .top-comments {
     margin-top: 22px;
     padding-top: 20px;
-    border-top: 1px solid var(--border-strong);
+    border-top: 1px solid var(--rule);
 }
 
 .top-comments__title {
