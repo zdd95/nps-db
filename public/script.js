@@ -994,6 +994,47 @@ function downloadCSV() {
 }
 
 // ===== Analysis Modal =====
+
+// Блокировка прокрутки страницы, пока открыта модалка.
+// Оверлей fixed и остаётся на месте, внутренний скролл модалки продолжает работать.
+let pageScrollLocked = false;
+let previousRootOverflow = '';
+let previousBodyPaddingRight = '';
+
+function lockPageScroll() {
+    if (pageScrollLocked) {
+        return;
+    }
+
+    pageScrollLocked = true;
+
+    const root = document.documentElement;
+    const body = document.body;
+    const scrollbarWidth = Math.max(0, window.innerWidth - root.clientWidth);
+
+    previousRootOverflow = root.style.overflow;
+    previousBodyPaddingRight = body.style.paddingRight;
+
+    root.style.overflow = 'hidden';
+
+    // Компенсируем исчезнувший скроллбар, чтобы контент не сдвигался по горизонтали.
+    if (scrollbarWidth > 0) {
+        const currentPaddingRight = parseFloat(window.getComputedStyle(body).paddingRight) || 0;
+        body.style.paddingRight = (currentPaddingRight + scrollbarWidth) + 'px';
+    }
+}
+
+function unlockPageScroll() {
+    if (!pageScrollLocked) {
+        return;
+    }
+
+    pageScrollLocked = false;
+
+    document.documentElement.style.overflow = previousRootOverflow;
+    document.body.style.paddingRight = previousBodyPaddingRight;
+}
+
 function openAnalysisModal() {
     openAnalysisModalWithBuilder(
         'Отчет анализа данных',
@@ -1054,6 +1095,7 @@ function openAnalysisModalWithBuilder(title, builder, options = {}) {
     }
 
     overlay.style.display = 'flex';
+    lockPageScroll();
 }
 
 function closeAnalysisModal() {
@@ -1062,6 +1104,7 @@ function closeAnalysisModal() {
     const body = document.getElementById('analysisBody');
 
     overlay.style.display = 'none';
+    unlockPageScroll();
     currentAnalysisDownloadActions = null;
 
     if (footer) {
