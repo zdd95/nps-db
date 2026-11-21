@@ -216,7 +216,6 @@ body {
     background-attachment: fixed;
     background-repeat: no-repeat;
     -webkit-font-smoothing: antialiased;
-    transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .page {
@@ -364,7 +363,6 @@ html:not(.dark) .card {
     padding: 22px 24px;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    transition: box-shadow 0.2s ease, background-color 0.25s ease, border-color 0.25s ease;
 }
 
 /* Блюр вынесен в псевдоэлемент: карточка не создаёт stacking context,
@@ -413,7 +411,6 @@ input {
     background-color: var(--input-bg);
     border: 1px solid var(--rule);
     border-radius: var(--radius-md);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
 }
 
 input::placeholder {
@@ -440,8 +437,7 @@ button {
     cursor: pointer;
     color: var(--accent-fg);
     background-color: var(--accent);
-    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease,
-        transform 0.1s ease, box-shadow 0.15s ease;
+    transition: transform 0.15s ease;
 }
 
 button:hover:not(:disabled) {
@@ -588,7 +584,6 @@ button.table-action {
     font-size: 14px;
     font-weight: 600;
     line-height: 1.25rem;
-    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 button.table-action:hover:not(:disabled) {
@@ -1006,7 +1001,6 @@ thead th {
     border-bottom: 1px solid var(--rule);
     cursor: pointer;
     user-select: none;
-    transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 thead th:hover {
@@ -1179,7 +1173,6 @@ select:focus {
     font-weight: 500;
     line-height: 1.2;
     cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 button.page-number {
