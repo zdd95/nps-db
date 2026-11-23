@@ -15,9 +15,9 @@
     var CLICK_WINDOW_MS = 1500;
     var MAX_RUNNERS = 12;
     var RUNNER_SIZE = 36;
-    var RUN_SPEED = 0.35;          // px за мс
+    var RUN_SPEED = 0.3;           // px за мс
     var MIN_DURATION_MS = 900;
-    var MAX_DURATION_MS = 2200;
+    var MAX_DURATION_MS = 3400;
     var STILL_MS = 600;            // показ без анимации при reduce-motion
 
     // Цвета машин в светлой теме: первая — красная, дальше по кругу.
