@@ -256,6 +256,7 @@ html.matrix .matrix-bg {
 /* --------------------------- шапка ---------------------------- */
 
 .page-header {
+    position: relative;
     padding: 4px 4px 0;
 }
 
@@ -281,6 +282,82 @@ html.matrix .page-rule {
     box-shadow: 0 0 8px rgba(34, 197, 94, 0.18);
 }
 
+/* ---------------------- пасхалка: бегуны ---------------------- */
+
+.egg-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.egg-runner {
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    opacity: 0;
+    --egg-tilt: 0deg;
+    will-change: transform, opacity;
+    animation: egg-run var(--egg-duration, 1400ms) linear forwards;
+}
+
+.egg-runner svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.egg-runner__bob {
+    display: block;
+    width: 100%;
+    height: 100%;
+    animation: egg-bob 180ms ease-in-out infinite alternate;
+}
+
+.egg-runner--light {
+    color: #b45309;
+    filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.22));
+}
+
+.egg-runner--dark {
+    color: #c7d2fe;
+    --egg-tilt: 7deg;
+}
+
+.egg-runner--matrix {
+    color: #4ade80;
+    filter: drop-shadow(0 0 5px rgba(74, 222, 128, 0.55));
+}
+
+.egg-runner--still {
+    opacity: 1;
+    animation: none;
+}
+
+@keyframes egg-run {
+    0% {
+        transform: translate3d(0, 0, 0) rotate(var(--egg-tilt, 0deg));
+        opacity: 0;
+    }
+    4% {
+        opacity: 1;
+    }
+    100% {
+        transform: translate3d(var(--egg-distance, 0px), 0, 0) rotate(var(--egg-tilt, 0deg));
+        opacity: 1;
+    }
+}
+
+@keyframes egg-bob {
+    from {
+        transform: translateY(1px) rotate(-2deg);
+    }
+    to {
+        transform: translateY(-2px) rotate(2deg);
+    }
+}
+
 .page-header__actions {
     display: flex;
     align-items: center;
@@ -288,8 +365,16 @@ html.matrix .page-rule {
 }
 
 .badge {
+    position: relative;
+    z-index: 2;
     display: inline-flex;
     align-items: center;
+    user-select: none;
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+    line-height: inherit;
+    cursor: pointer;
     padding: 6px 12px;
     border-radius: 999px;
     border: 1px solid rgba(251, 191, 36, 0.6);
@@ -299,6 +384,35 @@ html.matrix .page-rule {
     font-weight: 600;
     letter-spacing: 0.24em;
     text-transform: uppercase;
+}
+
+.badge:active {
+    transform: translateY(1px);
+}
+
+/* Наведение не подсвечивает бейдж: нейтрализуем общий стиль button:hover */
+.page-header .badge:hover {
+    transform: none;
+    background: rgba(254, 243, 199, 0.85);
+    border-color: rgba(251, 191, 36, 0.6);
+    color: #78350f;
+}
+
+html.dark .page-header .badge:hover {
+    background: rgba(129, 140, 248, 0.1);
+    border-color: rgba(129, 140, 248, 0.32);
+    color: #a5b4fc;
+}
+
+html.matrix .page-header .badge:hover {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(74, 222, 128, 0.35);
+    color: #86efac;
+}
+
+.badge:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
 }
 
 html.dark .badge {
@@ -518,6 +632,8 @@ html.dark .reset-all-btn:hover:not(:disabled) {
 }
 
 .theme-toggle {
+    position: relative;
+    z-index: 2;
     display: inline-flex;
     align-items: center;
     justify-content: center;
